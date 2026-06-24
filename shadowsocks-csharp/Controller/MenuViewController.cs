@@ -26,18 +26,6 @@ namespace Shadowsocks.Controller
 {
     public class MenuViewController
     {
-        private class EventParams
-        {
-            public readonly object sender;
-            public readonly EventArgs e;
-
-            public EventParams(object sender, EventArgs e)
-            {
-                this.sender = sender;
-                this.e = e;
-            }
-        }
-
         // yes this is just a menu view controller
         // when config form is closed, it moves away from RAM
         // and it should just do anything related to the config form
