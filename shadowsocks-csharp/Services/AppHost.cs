@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Shadowsocks.Controller;
+using Shadowsocks.Model;
 using System;
 
 namespace Shadowsocks.Services
@@ -22,16 +23,24 @@ namespace Shadowsocks.Services
         public static IServiceProvider Services =>
             _services ?? throw new InvalidOperationException(@"AppHost is not initialized; call AppHost.Init() first.");
 
-        /// <summary>Build the DI container. Call once, after the configuration has been loaded.</summary>
-        public static void Init()
+        /// <summary>
+        /// Build the DI container. Call once, after the configuration has been loaded from disk.
+        /// The provided <paramref name="config"/> instance is registered as a singleton so every
+        /// resolved consumer (controllers, view-models) receives the same live configuration.
+        /// </summary>
+        public static void Init(Configuration config)
         {
             var services = new ServiceCollection();
-            ConfigureServices(services);
+            ConfigureServices(services, config);
             _services = services.BuildServiceProvider();
         }
 
-        private static void ConfigureServices(IServiceCollection services)
+        private static void ConfigureServices(IServiceCollection services, Configuration config)
         {
+            // Register the loaded configuration as a singleton — this is the one true
+            // in-memory copy that every component reads and writes through.
+            services.AddSingleton(config);
+
             // Core singletons. MenuViewController depends on MainController; the container
             // resolves the same MainController instance for both.
             services.AddSingleton<MainController>();

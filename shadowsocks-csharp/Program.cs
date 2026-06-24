@@ -18,6 +18,9 @@ namespace Shadowsocks
 {
     internal static class Program
     {
+        private static MainController _controller;
+        private static MenuViewController _viewController;
+
         [STAThread]
         private static void Main(string[] args)
         {
@@ -42,18 +45,20 @@ namespace Shadowsocks
             app.Exit += App_Exit;
 
             Global.LoadConfig();
+            var config = Global.GuiConfig; // snapshot for DI registration
 
-            I18NUtil.SetLanguage(Global.GuiConfig.LangName);
+            I18NUtil.SetLanguage(config.LangName);
             ViewUtils.SetResource(app.Resources, @"../View/NotifyIconResources.xaml", 1);
 
             // Fluent (WPF-UI) theme. Appended after the i18n/notify-icon dictionaries so
             // I18NUtil's MergedDictionaries[0]/[1] indexing stays valid.
-            ThemeUtil.ApplyFluentTheme(app, ThemeUtil.Resolve(Global.GuiConfig.ThemeMode));
+            ThemeUtil.ApplyFluentTheme(app, ThemeUtil.Resolve(config.ThemeMode));
 
             // Build the DI container, then resolve the core singletons from it instead of
-            // newing them up. Global still mirrors the instances during the migration.
-            AppHost.Init();
-            Global.Controller = AppHost.Get<MainController>();
+            // newing them up. Global still mirrors the instances for legacy code.
+            AppHost.Init(config);
+            _controller = AppHost.Get<MainController>();
+            Global.Controller = _controller; // bridge for legacy consumers
 
             // Logging
             Logging.DefaultOut = Console.Out;
@@ -61,11 +66,12 @@ namespace Shadowsocks
 
             Utils.SetTls();
 
-            Global.ViewController = AppHost.Get<MenuViewController>();
-            SystemEvents.SessionEnding += Global.ViewController.Quit_Click;
+            _viewController = AppHost.Get<MenuViewController>();
+            Global.ViewController = _viewController; // bridge for legacy consumers
+            SystemEvents.SessionEnding += _viewController.Quit_Click;
 
-            Global.Controller.Reload();
-            if (Global.GuiConfig.IsDefaultConfig())
+            _controller.Reload();
+            if (config.IsDefaultConfig())
             {
                 var res = MessageBox.Show(
                 $@"{I18NUtil.GetAppStringValue(@"DefaultConfigMessage")}{Environment.NewLine}{I18NUtil.GetAppStringValue(@"DefaultConfigQuestion")}",
@@ -74,12 +80,12 @@ namespace Shadowsocks
                 {
                     case MessageBoxResult.Yes:
                     {
-                        Global.Controller.ShowConfigForm();
+                        _controller.ShowConfigForm();
                         break;
                     }
                     case MessageBoxResult.No:
                     {
-                        Global.Controller.ShowSubscribeWindow();
+                        _controller.ShowSubscribeWindow();
                         break;
                     }
                     default:
@@ -99,8 +105,9 @@ namespace Shadowsocks
 
         private static void StopController()
         {
-            Global.ViewController?.Quit_Click(default, default);
-            Global.Controller?.Stop();
+            _viewController?.Quit_Click(default, default);
+            _controller?.Stop();
+            _controller = null;
             Global.Controller = null;
         }
 
@@ -118,14 +125,14 @@ namespace Shadowsocks
                 case PowerModes.Resume:
                 {
                     Logging.Info("os wake up");
-                    if (Global.Controller != null)
+                    if (_controller != null)
                     {
                         Task.Run(() =>
                         {
                             Thread.Sleep(10 * 1000);
                             try
                             {
-                                Global.Controller.Reload();
+                                _controller.Reload();
                                 Logging.Info("controller started");
                             }
                             catch (Exception ex)
@@ -138,9 +145,9 @@ namespace Shadowsocks
                 }
                 case PowerModes.Suspend:
                 {
-                    if (Global.Controller != null)
+                    if (_controller != null)
                     {
-                        Global.Controller.Stop();
+                        _controller.Stop();
                         Logging.Info("controller stopped");
                     }
                     Logging.Info("os suspend");
@@ -189,7 +196,7 @@ namespace Shadowsocks
             }
             Application.Current.Dispatcher?.InvokeAsync(() =>
             {
-                Global.ViewController.ImportAddress(string.Join(Environment.NewLine, args));
+                _viewController.ImportAddress(string.Join(Environment.NewLine, args));
             });
 
             endFunc(string.Empty);
