@@ -19,27 +19,30 @@ namespace Shadowsocks.ViewModel
     /// </summary>
     public partial class SubscriptionsViewModel : ObservableObject
     {
+        private readonly Configuration _config;
+
         /// <summary>Cards currently rendered, one per <see cref="ServerSubscribe"/>.</summary>
         public ObservableCollection<SubscriptionItemViewModel> Subscriptions { get; } = new();
 
         [ObservableProperty] private bool _isEmpty;
 
-        public SubscriptionsViewModel()
+        public SubscriptionsViewModel(Configuration config)
         {
+            _config = config;
             Reload();
         }
 
-        /// <summary>Rebuild the card list from <see cref="Global.GuiConfig"/>.</summary>
+        /// <summary>Rebuild the card list from <see cref="_config"/>.</summary>
         public void Reload()
         {
             Subscriptions.Clear();
 
-            var config = Global.GuiConfig;
+            var config = _config;
             if (config?.ServerSubscribes != null)
             {
                 foreach (var sub in config.ServerSubscribes)
                 {
-                    Subscriptions.Add(new SubscriptionItemViewModel(sub));
+                    Subscriptions.Add(new SubscriptionItemViewModel(sub, _config));
                 }
             }
 
@@ -49,7 +52,7 @@ namespace Shadowsocks.ViewModel
         [RelayCommand]
         private void Add()
         {
-            var config = Global.GuiConfig;
+            var config = _config;
             if (config?.ServerSubscribes == null)
             {
                 return;
@@ -57,7 +60,7 @@ namespace Shadowsocks.ViewModel
 
             var sub = new ServerSubscribe();
             config.ServerSubscribes.Add(sub);
-            Subscriptions.Add(new SubscriptionItemViewModel(sub));
+            Subscriptions.Add(new SubscriptionItemViewModel(sub, _config));
             IsEmpty = false;
 
             Global.SaveConfig();
@@ -71,7 +74,7 @@ namespace Shadowsocks.ViewModel
                 return;
             }
 
-            var config = Global.GuiConfig;
+            var config = _config;
             if (config?.ServerSubscribes == null)
             {
                 return;
@@ -99,7 +102,7 @@ namespace Shadowsocks.ViewModel
                 return;
             }
 
-            var config = Global.GuiConfig;
+            var config = _config;
             if (config?.Configs == null)
             {
                 return;
@@ -128,7 +131,7 @@ namespace Shadowsocks.ViewModel
                 try
                 {
                     Global.UpdateSubscribeManager?.CreateTask(
-                        Global.GuiConfig,
+                        _config,
                         Global.UpdateNodeChecker,
                         true,
                         new List<ServerSubscribe> { item.Model });
@@ -149,7 +152,7 @@ namespace Shadowsocks.ViewModel
                 try
                 {
                     Global.UpdateSubscribeManager?.CreateTask(
-                        Global.GuiConfig,
+                        _config,
                         Global.UpdateNodeChecker,
                         true);
                 }
@@ -168,11 +171,14 @@ namespace Shadowsocks.ViewModel
     /// </summary>
     public partial class SubscriptionItemViewModel : ObservableObject
     {
+        private readonly Configuration _config;
+
         public ServerSubscribe Model { get; }
 
-        public SubscriptionItemViewModel(ServerSubscribe model)
+        public SubscriptionItemViewModel(ServerSubscribe model, Configuration config)
         {
             Model = model;
+            _config = config;
             _enable = model.Enable;
         }
 
@@ -243,14 +249,14 @@ namespace Shadowsocks.ViewModel
         {
             get
             {
-                var config = Global.GuiConfig;
-                if (config?.Configs == null)
+                var cfg = _config;
+                if (cfg?.Configs == null)
                 {
                     return 0;
                 }
 
                 var tag = Model.Tag;
-                return config.Configs.Count(server => server.SubTag == tag);
+                return cfg.Configs.Count(server => server.SubTag == tag);
             }
         }
 
@@ -262,15 +268,15 @@ namespace Shadowsocks.ViewModel
         /// </summary>
         private (long down, long up) AggregateTraffic()
         {
-            var config = Global.GuiConfig;
-            if (config?.Configs == null)
+            var cfg = _config;
+            if (cfg?.Configs == null)
             {
                 return (0, 0);
             }
 
             var tag = Model.Tag;
             long down = 0, up = 0;
-            foreach (var server in config.Configs.Where(server => server.SubTag == tag))
+            foreach (var server in cfg.Configs.Where(server => server.SubTag == tag))
             {
                 var log = server.SpeedLog;
                 if (log == null)

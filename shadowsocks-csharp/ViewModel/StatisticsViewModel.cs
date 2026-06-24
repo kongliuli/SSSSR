@@ -13,6 +13,7 @@ namespace Shadowsocks.ViewModel
     /// </summary>
     public partial class StatisticsViewModel : ObservableObject
     {
+        private readonly Configuration _config;
         private readonly DispatcherTimer _timer;
 
         /// <summary>Servers shown in the grid. Each <see cref="Server"/> already raises
@@ -20,8 +21,9 @@ namespace Shadowsocks.ViewModel
         /// only used to keep the collection in sync with the live configuration.</summary>
         public ObservableCollection<Server> Servers { get; } = new();
 
-        public StatisticsViewModel()
+        public StatisticsViewModel(Configuration config)
         {
+            _config = config;
             _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += (_, _) => Refresh();
         }
@@ -38,7 +40,7 @@ namespace Shadowsocks.ViewModel
 
         private void Refresh()
         {
-            var config = Global.GuiConfig;
+            var config = _config;
             var configs = config?.Configs;
             if (configs is null)
             {

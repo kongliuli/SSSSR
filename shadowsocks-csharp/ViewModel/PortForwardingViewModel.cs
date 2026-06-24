@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Shadowsocks.Controller;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
 using System.Collections.Generic;
@@ -16,6 +17,8 @@ namespace Shadowsocks.ViewModel
     /// </summary>
     public partial class PortForwardingViewModel : ObservableObject
     {
+        private readonly MainController _controller;
+
         /// <summary>Editable rules shown in the grid.</summary>
         public ObservableCollection<PortMapRow> Rules { get; } = new();
 
@@ -33,8 +36,9 @@ namespace Shadowsocks.ViewModel
         [ObservableProperty] private PortMapRow _selectedRule;
         [ObservableProperty] private string _statusText = string.Empty;
 
-        public PortForwardingViewModel()
+        public PortForwardingViewModel(MainController controller)
         {
+            _controller = controller;
             Load();
         }
 
@@ -126,21 +130,8 @@ namespace Shadowsocks.ViewModel
             var config = Global.Load();
             config.PortMap = portMap;
 
-            if (Global.Controller is not null)
-            {
-                Global.Controller.SaveServersPortMap(config);
-                StatusText = $@"已保存 {portMap.Count} 条规则";
-            }
-            else
-            {
-                // Fallback when the controller is unavailable (should not happen in normal use).
-                if (Global.GuiConfig is not null)
-                {
-                    Global.GuiConfig.PortMap = portMap;
-                    Global.SaveConfig();
-                }
-                StatusText = $@"已保存 {portMap.Count} 条规则（直接写入配置）";
-            }
+            _controller.SaveServersPortMap(config);
+            StatusText = $@"已保存 {portMap.Count} 条规则";
 
             Load();
         }
