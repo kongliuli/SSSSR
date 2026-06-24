@@ -49,9 +49,9 @@ namespace Shadowsocks.ViewModel
         /// <summary>Theme options for the General section (follow system / light / dark).</summary>
         public ObservableCollection<ThemeOption> Themes { get; } = new(new[]
         {
-            new ThemeOption(@"跟随系统", ApplicationTheme.Unknown),
-            new ThemeOption(@"浅色", ApplicationTheme.Light),
-            new ThemeOption(@"深色", ApplicationTheme.Dark)
+            new ThemeOption(@"跟随系统", AppThemeMode.System),
+            new ThemeOption(@"浅色", AppThemeMode.Light),
+            new ThemeOption(@"深色", AppThemeMode.Dark)
         });
 
         [ObservableProperty] private ThemeOption _selectedTheme;
@@ -119,8 +119,8 @@ namespace Shadowsocks.ViewModel
             }
             CurrentDnsClient = DnsClients.FirstOrDefault();
 
-            // Resync the theme selection with whatever is currently applied (best effort).
-            SelectedTheme = Themes[0];
+            // Reflect the persisted theme preference in the selector.
+            SelectedTheme = Themes.FirstOrDefault(t => t.Mode == Config.ThemeMode) ?? Themes[0];
             StatusText = string.Empty;
         }
 
@@ -131,12 +131,19 @@ namespace Shadowsocks.ViewModel
                 return;
             }
 
-            // Apply the theme immediately for instant feedback. Persistence is not yet wired up.
-            // TODO: persist the chosen theme (no theme field exists on Configuration yet).
-            var theme = value.Theme == ApplicationTheme.Unknown
-                ? ThemeUtil.GetSystemTheme()
-                : value.Theme;
-            ApplicationThemeManager.Apply(theme);
+            // Apply immediately for instant feedback…
+            ApplicationThemeManager.Apply(ThemeUtil.Resolve(value.Mode));
+
+            // …and persist to the live configuration so it survives a restart.
+            if (Config != null)
+            {
+                Config.ThemeMode = value.Mode;
+            }
+            if (Global.GuiConfig != null && Global.GuiConfig.ThemeMode != value.Mode)
+            {
+                Global.GuiConfig.ThemeMode = value.Mode;
+                Global.SaveConfig();
+            }
         }
 
         [RelayCommand]
@@ -246,17 +253,17 @@ namespace Shadowsocks.ViewModel
         }
     }
 
-    /// <summary>A selectable theme entry: a localized display name plus the WPF-UI theme to apply.</summary>
+    /// <summary>A selectable theme entry: a localized display name plus the persisted theme mode.</summary>
     public sealed class ThemeOption
     {
-        public ThemeOption(string name, ApplicationTheme theme)
+        public ThemeOption(string name, AppThemeMode mode)
         {
             Name = name;
-            Theme = theme;
+            Mode = mode;
         }
 
         public string Name { get; }
 
-        public ApplicationTheme Theme { get; }
+        public AppThemeMode Mode { get; }
     }
 }

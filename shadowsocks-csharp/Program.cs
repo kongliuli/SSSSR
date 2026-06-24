@@ -48,7 +48,7 @@ namespace Shadowsocks
 
             // Fluent (WPF-UI) theme. Appended after the i18n/notify-icon dictionaries so
             // I18NUtil's MergedDictionaries[0]/[1] indexing stays valid.
-            ThemeUtil.ApplyFluentTheme(app, ThemeUtil.GetSystemTheme());
+            ThemeUtil.ApplyFluentTheme(app, ThemeUtil.Resolve(Global.GuiConfig.ThemeMode));
 
             // Build the DI container, then resolve the core singletons from it instead of
             // newing them up. Global still mirrors the instances during the migration.

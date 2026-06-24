@@ -1,4 +1,7 @@
+using Shadowsocks.Enums;
+using Shadowsocks.Model;
 using Shadowsocks.Services;
+using Shadowsocks.Util;
 using Shadowsocks.View.Pages;
 using System;
 using System.Windows;
@@ -28,9 +31,18 @@ namespace Shadowsocks.View
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // Follow the OS light/dark theme and apply the window backdrop (Mica on Win11,
-            // gracefully degrades to a solid Fluent surface on Win10).
-            SystemThemeWatcher.Watch(this, WindowBackdropType.Mica, true);
+            // Honor the persisted theme preference. When "follow system" is chosen, watch the OS
+            // theme so the window tracks it live; otherwise apply the fixed theme + backdrop.
+            // Mica on Win11 gracefully degrades to a solid Fluent surface on Win10.
+            var mode = Global.GuiConfig?.ThemeMode ?? AppThemeMode.System;
+            if (mode == AppThemeMode.System)
+            {
+                SystemThemeWatcher.Watch(this, WindowBackdropType.Mica, true);
+            }
+            else
+            {
+                ApplicationThemeManager.Apply(ThemeUtil.Resolve(mode), WindowBackdropType.Mica, true);
+            }
 
             RootNavigation.Navigate(InitialPage ?? typeof(DashboardPage));
         }

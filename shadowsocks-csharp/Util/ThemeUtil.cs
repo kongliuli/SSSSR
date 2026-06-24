@@ -1,4 +1,5 @@
 using System.Windows;
+using Shadowsocks.Enums;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 using Wpf.Ui.Markup;
@@ -37,6 +38,17 @@ namespace Shadowsocks.Util
                 SystemTheme.Dark or SystemTheme.Glow or SystemTheme.CapturedMotion => ApplicationTheme.Dark,
                 SystemTheme.HCBlack or SystemTheme.HCWhite => ApplicationTheme.HighContrast,
                 _ => ApplicationTheme.Light,
+            };
+        }
+
+        /// <summary>Resolve a stored <see cref="AppThemeMode"/> preference to a concrete WPF-UI theme.</summary>
+        public static ApplicationTheme Resolve(AppThemeMode mode)
+        {
+            return mode switch
+            {
+                AppThemeMode.Light => ApplicationTheme.Light,
+                AppThemeMode.Dark => ApplicationTheme.Dark,
+                _ => GetSystemTheme(),
             };
         }
     }

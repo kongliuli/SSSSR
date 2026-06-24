@@ -17,6 +17,7 @@ namespace Shadowsocks.Model
         private int _index;
         private bool _random;
         private ProxyMode _sysProxyMode;
+        private AppThemeMode _themeMode;
         private bool _shareOverLan;
         private int _localPort;
         private int _reconnectTimes;
@@ -69,6 +70,11 @@ namespace Shadowsocks.Model
         /// 系统代理模式
         /// </summary>
         public ProxyMode SysProxyMode { get => _sysProxyMode; set => SetField(ref _sysProxyMode, value); }
+
+        /// <summary>
+        /// 界面主题（跟随系统 / 浅色 / 深色）
+        /// </summary>
+        public AppThemeMode ThemeMode { get => _themeMode; set => SetField(ref _themeMode, value); }
 
         /// <summary>
         /// 是否监听所有网卡
@@ -493,6 +499,7 @@ namespace Shadowsocks.Model
             Index = config.Index;
             Random = config.Random;
             SysProxyMode = config.SysProxyMode;
+            ThemeMode = config.ThemeMode;
             ShareOverLan = config.ShareOverLan;
             LocalPort = config.LocalPort;
             ReconnectTimes = config.ReconnectTimes;
