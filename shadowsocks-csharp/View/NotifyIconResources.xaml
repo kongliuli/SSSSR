@@ -1,0 +1,78 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style TargetType="MenuItem">
+        <Setter Property="BorderThickness" Value="3"></Setter>
+    </Style>
+    <ContextMenu x:Shared="False" x:Key="SysTrayMenu">
+        <MenuItem x:Name="Mode">
+            <MenuItem x:Name="DisableProxy" />
+            <MenuItem x:Name="PacProxy" />
+            <MenuItem x:Name="GlobalProxy" />
+            <Separator />
+            <MenuItem x:Name="NoProxy" />
+        </MenuItem>
+        <MenuItem x:Name="ProxySetting">
+            <MenuItem x:Name="UpdatePac">
+                <MenuItem x:Name="UpdateLanPac" />
+                <Separator />
+                <MenuItem x:Name="UpdateChnDomainPac" />
+                <MenuItem x:Name="UpdateChnDomainIpPac" />
+                <MenuItem x:Name="UpdateChnIpPac" />
+                <MenuItem x:Name="UpdateGfwList" />
+                <Separator />
+                <MenuItem x:Name="UpdateChnOnlyPac" />
+            </MenuItem>
+            <MenuItem x:Name="ProxyRule">
+                <MenuItem x:Name="BypassLan" />
+                <MenuItem x:Name="BypassLanChina" />
+                <MenuItem x:Name="BypassLanNotChina" />
+                <MenuItem x:Name="UserCustom" />
+                <Separator />
+                <MenuItem x:Name="DisableBypass" />
+            </MenuItem>
+            <Separator />
+            <MenuItem x:Name="CopyPacUrl" />
+            <MenuItem x:Name="EditPacFile" />
+            <MenuItem x:Name="EditGfwListUserRule" />
+        </MenuItem>
+        <Separator />
+        <MenuItem x:Name="Servers">
+            <Separator />
+            <MenuItem x:Name="EditServers" />
+            <Separator />
+            <MenuItem x:Name="ScanQrCode" />
+            <MenuItem x:Name="ImportSsrLinksFromClipboard" />
+            <MenuItem x:Name="ImportServers" />
+            <Separator />
+            <MenuItem x:Name="LoadBalance" />
+            <MenuItem x:Name="SameHostForSameAddress" />
+            <Separator />
+            <MenuItem x:Name="ServerStatistic" />
+            <MenuItem x:Name="DisconnectCurrent" />
+        </MenuItem>
+        <MenuItem x:Name="ServersSubscribe">
+            <MenuItem x:Name="SubscribeSetting" />
+            <MenuItem x:Name="UpdateSubscribeSsrNode" />
+        </MenuItem>
+        <MenuItem x:Name="ShowLogs" />
+        <Separator />
+        <MenuItem x:Name="More">
+            <MenuItem x:Name="GlobalSettings" />
+            <MenuItem x:Name="DnsSettings" />
+            <MenuItem x:Name="PortSettings" />
+            <MenuItem x:Name="GenQrCode" />
+            <Separator />
+            <MenuItem x:Name="OpenWiki" />
+            <MenuItem x:Name="Feedback" />
+            <Separator />
+            <MenuItem x:Name="Update">
+                <MenuItem x:Name="CheckUpdate" />
+                <MenuItem x:Name="UpdateAvailable" Visibility="Collapsed" />
+                <Separator />
+                <MenuItem x:Name="AutoCheckUpdate" />
+                <MenuItem x:Name="AllowPreRelease" />
+            </MenuItem>
+        </MenuItem>
+        <MenuItem x:Name="Quit" />
+    </ContextMenu>
+</ResourceDictionary>

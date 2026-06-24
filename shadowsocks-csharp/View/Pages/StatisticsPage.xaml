@@ -1,0 +1,152 @@
+<Page x:Class="Shadowsocks.View.Pages.StatisticsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:valueConverter="clr-namespace:Shadowsocks.View.ValueConverter"
+      Title="连接统计">
+    <Page.Resources>
+        <valueConverter:SpeedToBrushConverter x:Key="SpeedToBrushConverter" />
+        <valueConverter:ConnectNumberToBrushConverter x:Key="ConnectNumberToBrushConverter" />
+        <valueConverter:LatencyToBrushConverter x:Key="LatencyToBrushConverter" />
+        <valueConverter:ConnectErrorToBrushConverter x:Key="ConnectErrorToBrushConverter" />
+        <valueConverter:ErrorPercentToBrushConverter x:Key="ErrorPercentToBrushConverter" />
+        <valueConverter:TotalDownloadBackgroundBrushConvert x:Key="TotalDownloadBackgroundBrushConvert" />
+        <valueConverter:TotalUploadBackgroundBrushConvert x:Key="TotalUploadBackgroundBrushConvert" />
+
+        <!-- Cell styles: paint the cell background from a SpeedLog value via the shared converters. -->
+        <Style x:Key="LatencyCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.AvgConnectTimeText, Converter={StaticResource LatencyToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="ConnectingCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.Connecting, Converter={StaticResource ConnectNumberToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="AvgDownCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.AvgDownloadBytes, Converter={StaticResource SpeedToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="MaxDownCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.MaxDownSpeed, Converter={StaticResource SpeedToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="AvgUpCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.AvgUploadBytes, Converter={StaticResource SpeedToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="MaxUpCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.MaxUpSpeed, Converter={StaticResource SpeedToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <!-- Total download / upload use the row index for alternating stripe colors,
+             matching the legacy grid (the converters key off the int row index). -->
+        <Style x:Key="TotalDownCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding Index, Converter={StaticResource TotalDownloadBackgroundBrushConvert}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="TotalUpCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding Index, Converter={StaticResource TotalUploadBackgroundBrushConvert}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="ConnectErrorCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.ConnectError, Converter={StaticResource ConnectErrorToBrushConverter}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="ErrorPercentCell" TargetType="DataGridCell">
+            <Setter Property="Background"
+                    Value="{Binding SpeedLog.ErrorPercent, Converter={StaticResource ErrorPercentToBrushConverter}, Mode=OneWay}" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="连接统计" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="各节点实时延迟、速度、连接数、错误率与流量总览" Opacity="0.7"
+                       Margin="0,6,0,18" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="10" Padding="2">
+            <DataGrid ItemsSource="{Binding Servers}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserReorderColumns="True"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      SelectionMode="Single"
+                      SelectionUnit="Cell"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="备注"
+                                        Binding="{Binding FriendlyName, Mode=OneWay}"
+                                        Width="*" MinWidth="160" />
+
+                    <DataGridTextColumn Header="分组"
+                                        Binding="{Binding GroupName, Mode=OneWay}"
+                                        Width="Auto" MinWidth="80" />
+
+                    <DataGridTextColumn Header="延迟(s)"
+                                        Binding="{Binding SpeedLog.AvgConnectTimeText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.AvgConnectTime"
+                                        CellStyle="{StaticResource LatencyCell}" />
+
+                    <DataGridTextColumn Header="连接数"
+                                        Binding="{Binding SpeedLog.Connecting, Mode=OneWay}"
+                                        CellStyle="{StaticResource ConnectingCell}" />
+
+                    <DataGridTextColumn Header="下行速度"
+                                        Binding="{Binding SpeedLog.AvgDownloadBytesText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.AvgDownloadBytes"
+                                        CellStyle="{StaticResource AvgDownCell}" />
+
+                    <DataGridTextColumn Header="最大下行"
+                                        Binding="{Binding SpeedLog.MaxDownSpeedText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.MaxDownSpeed"
+                                        CellStyle="{StaticResource MaxDownCell}" />
+
+                    <DataGridTextColumn Header="上行速度"
+                                        Binding="{Binding SpeedLog.AvgUploadBytesText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.AvgUploadBytes"
+                                        CellStyle="{StaticResource AvgUpCell}" />
+
+                    <DataGridTextColumn Header="最大上行"
+                                        Binding="{Binding SpeedLog.MaxUpSpeedText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.MaxUpSpeed"
+                                        CellStyle="{StaticResource MaxUpCell}" />
+
+                    <DataGridTextColumn Header="总下载"
+                                        Binding="{Binding SpeedLog.TotalDownloadBytesText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.TotalDownloadBytes"
+                                        CellStyle="{StaticResource TotalDownCell}" />
+
+                    <DataGridTextColumn Header="总上传"
+                                        Binding="{Binding SpeedLog.TotalUploadBytesText, Mode=OneWay}"
+                                        SortMemberPath="SpeedLog.TotalUploadBytes"
+                                        CellStyle="{StaticResource TotalUpCell}" />
+
+                    <DataGridTextColumn Header="错误"
+                                        Binding="{Binding SpeedLog.ConnectError, Mode=OneWay}"
+                                        CellStyle="{StaticResource ConnectErrorCell}" />
+
+                    <DataGridTextColumn Header="错误率"
+                                        Binding="{Binding SpeedLog.ErrorPercent, Mode=OneWay, StringFormat={}{0:0}%}"
+                                        SortMemberPath="SpeedLog.ErrorPercent"
+                                        CellStyle="{StaticResource ErrorPercentCell}" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</Page>

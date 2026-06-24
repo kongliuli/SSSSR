@@ -1,0 +1,66 @@
+<Page x:Class="Shadowsocks.View.Pages.LogsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="日志">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="日志" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Opacity="0.7" Margin="0,6,0,0" TextWrapping="Wrap">
+                <Run Text="运行日志" />
+                <Run Text="{Binding LogFileName, Mode=OneWay}" />
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,16,0,12">
+            <Button Content="清空" MinWidth="72" Margin="0,0,8,0"
+                    Command="{Binding ClearCommand}" />
+            <ToggleButton Content="自动滚动" MinWidth="84" Margin="0,0,8,0"
+                          IsChecked="{Binding AutoScroll, Mode=TwoWay}" />
+            <ToggleButton Content="自动换行" MinWidth="84" Margin="0,0,16,0"
+                          IsChecked="{Binding WordWrap, Mode=TwoWay}" />
+            <TextBlock Text="字号" VerticalAlignment="Center" Opacity="0.7" Margin="0,0,8,0" />
+            <Slider Width="140" VerticalAlignment="Center"
+                    Minimum="9" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True"
+                    Value="{Binding FontSize, Mode=TwoWay}" />
+            <TextBlock Text="{Binding FontSize, Mode=OneWay, StringFormat={}{0:0}}"
+                       VerticalAlignment="Center" Opacity="0.7" Margin="8,0,0,0" />
+        </StackPanel>
+
+        <!-- Log body, wrapped in a Fluent card -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="2">
+            <TextBox x:Name="LogTextBox"
+                     IsReadOnly="True"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     FontFamily="Cascadia Mono, Consolas, Courier New"
+                     FontSize="{Binding FontSize, Mode=OneWay}"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="TextWrapping" Value="NoWrap" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding WordWrap}" Value="True">
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                                <!-- No horizontal scrollbar needed when wrapping -->
+                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+        </Border>
+    </Grid>
+</Page>

@@ -1,0 +1,164 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <UseWPF>true</UseWPF>
+    <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
+    <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
+    <GenerateAssemblyCopyrightAttribute>false</GenerateAssemblyCopyrightAttribute>
+    <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
+    <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+    <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
+    <AssemblyName>ShadowsocksR</AssemblyName>
+    <RootNamespace>Shadowsocks</RootNamespace>
+    <ApplicationIcon>shadowsocks.ico</ApplicationIcon>
+    <StartupObject>Shadowsocks.Program</StartupObject>
+    <LangVersion>latest</LangVersion>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE;PROTOCOL_STATISTICS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;PROTOCOL_STATISTICS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants Condition=" $(SelfContained) ">$(DefineConstants);SelfContained</DefineConstants>
+    <DefineConstants Condition=" $(RuntimeIdentifier.Contains('x64')) ">$(DefineConstants);Is64Bit</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="View\Controls\MaskedTextBox.xaml" />
+    <None Remove="View\Controls\NumberUpDown.xaml" />
+    <None Remove="Resources\ssw128.png" />
+    <None Remove="View\LogWindow.xaml" />
+    <None Remove="View\PortSettingsWindow.xaml" />
+    <None Remove="View\QRCodeSplashWindow.xaml" />
+    <None Remove="View\ServerLogWindow.xaml" />
+    <None Remove="View\ShowTextWindow.xaml" />
+    <None Remove="View\SubscribeWindow.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ARSoft.Tools.Net" Version="2.3.0" Condition="'$(LocalDnsShim)' != 'true'" />
+    <PackageReference Include="ARSoft.Tools.Net" Version="3.0.0" Condition="'$(LocalDnsShim)' == 'true'" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CryptoBase" Version="1.7.2" />
+    <PackageReference Include="gong-wpf-dragdrop" Version="4.0.0" />
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+    <PackageReference Include="HMBSbige.SingleInstance" Version="6.0.1" />
+    <PackageReference Include="HMBSbige.UpdateChecker" Version="8.0.1" />
+    <!-- LiveCharts2's WPF view pulls SkiaSharp.Views.WPF/OpenTK as .NET Framework assemblies
+         (used via the compat shim; the CPU SKElement render path does not need OpenTK). Silence
+         the expected NU1701 transitive-compat warnings. -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" NoWarn="NU1701" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="RouteMatcher" Version="1.0.0" />
+    <PackageReference Include="RunAtStartup" Version="5.0.2" />
+    <PackageReference Include="Shadowsocks.Protocol" Version="1.0.2" />
+    <PackageReference Include="URIScheme" Version="5.0.0" />
+    <PackageReference Include="WindowsProxy" Version="6.0.0" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="WpfColorFontDialog" Version="1.0.8" />
+    <PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.13" />
+  </ItemGroup>
+
+  <!-- Local dev build shim for DNS-over-TLS (see Build\LocalDnsShim.cs). Excluded by default;
+       compiled only when building with -p:LocalDnsShim=true on machines without the private
+       ARSoft.Tools.Net 2.3.0 feed. -->
+  <ItemGroup>
+    <Compile Remove="Build\LocalDnsShim.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(LocalDnsShim)' == 'true'">
+    <Compile Include="Build\LocalDnsShim.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="I18N\SettingsWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\SettingsWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\SettingsWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\PortSettingsWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\PortSettingsWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\PortSettingsWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\ServerLogWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\ServerLogWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\ServerLogWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\LogWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\LogWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\LogWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\DnsSettingWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\DnsSettingWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\DnsSettingWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\SubscribeWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\SubscribeWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\SubscribeWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\ConfigWindow.en-US.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\ConfigWindow.zh-CN.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="I18N\ConfigWindow.zh-TW.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+</Project>

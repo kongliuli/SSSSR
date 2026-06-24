@@ -1,0 +1,114 @@
+<Page x:Class="Shadowsocks.View.Pages.SubscriptionsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="订阅">
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <!-- 宽订阅卡，复用 DashboardPage 的卡片视觉语言 -->
+        <Style x:Key="SubCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style x:Key="CardCaption" TargetType="TextBlock">
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28">
+
+            <!-- 标题 + 顶部操作 -->
+            <DockPanel LastChildFill="False" Margin="0,0,0,18">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="订阅" FontSize="28" FontWeight="SemiBold" />
+                    <TextBlock Text="管理订阅链接、节点数量与自动更新" Opacity="0.7" Margin="0,6,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="全部更新" MinWidth="92" Margin="0,0,10,0"
+                            Command="{Binding UpdateAllCommand}" />
+                    <Button Content="添加订阅" MinWidth="92"
+                            Command="{Binding AddCommand}" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- 空状态 -->
+            <Border Style="{StaticResource SubCard}"
+                    Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="暂无订阅" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="点击右上角「添加订阅」创建一个新的订阅链接。"
+                               Opacity="0.7" Margin="0,6,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- 订阅卡列表，一行一张宽卡 -->
+            <ItemsControl ItemsSource="{Binding Subscriptions}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Vertical" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource SubCard}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 左侧：名称 / URL / 元信息 -->
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="名称" Style="{StaticResource CardCaption}" />
+                                    <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="0,2,0,10" />
+
+                                    <TextBlock Text="订阅 URL" Style="{StaticResource CardCaption}" />
+                                    <TextBox Text="{Binding Url, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="0,2,0,12" TextWrapping="NoWrap"
+                                             HorizontalScrollBarVisibility="Auto" />
+
+                                    <StackPanel Orientation="Horizontal">
+                                        <StackPanel Margin="0,0,28,0">
+                                            <TextBlock Text="上次更新" Style="{StaticResource CardCaption}" />
+                                            <TextBlock Text="{Binding LastUpdateText}" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,28,0">
+                                            <TextBlock Text="节点数" Style="{StaticResource CardCaption}" />
+                                            <TextBlock Text="{Binding NodeCountText}" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="流量" Style="{StaticResource CardCaption}" />
+                                            <TextBlock Text="{Binding TrafficText}" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 右侧：启用开关 + 操作按钮 -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,14">
+                                        <TextBlock Text="启用" VerticalAlignment="Center" Margin="0,0,8,0" Opacity="0.8" />
+                                        <ui:ToggleSwitch IsChecked="{Binding Enable, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <Button Content="更新" MinWidth="84" Margin="0,0,0,8" HorizontalAlignment="Stretch"
+                                            Command="{Binding DataContext.UpdateOneCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Content="删除" MinWidth="84" HorizontalAlignment="Stretch"
+                                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

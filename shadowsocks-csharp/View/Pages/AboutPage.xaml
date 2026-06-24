@@ -1,0 +1,18 @@
+<Page x:Class="Shadowsocks.View.Pages.AboutPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="关于">
+    <Grid Margin="28">
+        <StackPanel VerticalAlignment="Top">
+            <TextBlock Text="关于" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="版本信息与链接" Opacity="0.7" Margin="0,6,0,18" TextWrapping="Wrap" />
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="ShadowsocksR for Windows" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="版本、更新检查、项目链接与许可信息将在后续阶段补充到此处。"
+                               Opacity="0.8" Margin="0,8,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</Page>
