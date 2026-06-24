@@ -1,4 +1,4 @@
-using Shadowsocks.Model;
+using Shadowsocks.Controller;
 using Shadowsocks.ViewModel;
 using System;
 using System.Windows.Controls;
@@ -8,11 +8,13 @@ namespace Shadowsocks.View.Pages
     public partial class SubscriptionsPage : Page
     {
         private readonly SubscriptionsViewModel _viewModel;
+        private readonly MainController _controller;
         private bool _configChangedHooked;
 
-        public SubscriptionsPage(SubscriptionsViewModel vm)
+        public SubscriptionsPage(SubscriptionsViewModel vm, MainController controller)
         {
             _viewModel = vm;
+            _controller = controller;
             InitializeComponent();
             DataContext = vm;
 
@@ -39,7 +41,7 @@ namespace Shadowsocks.View.Pages
 
         /// <summary>
         /// 订阅在后台完成更新（写 LastUpdateTime / 加节点）后，<see cref="MainController"/> 会触发
-        /// <c>ConfigChanged</c>，此时回到 UI 线程重建卡片列表。<see cref="Model.Global.Controller"/>
+        /// <c>ConfigChanged</c>，此时回到 UI 线程重建卡片列表。<see cref="_controller"/>
         /// 可能尚未初始化（null），做防御。
         /// </summary>
         private void HookConfigChanged()
@@ -49,13 +51,12 @@ namespace Shadowsocks.View.Pages
                 return;
             }
 
-            var controller = Global.Controller;
-            if (controller is null)
+            if (_controller is null)
             {
                 return;
             }
 
-            controller.ConfigChanged += Controller_ConfigChanged;
+            _controller.ConfigChanged += Controller_ConfigChanged;
             _configChangedHooked = true;
         }
 
@@ -66,10 +67,9 @@ namespace Shadowsocks.View.Pages
                 return;
             }
 
-            var controller = Global.Controller;
-            if (controller is not null)
+            if (_controller is not null)
             {
-                controller.ConfigChanged -= Controller_ConfigChanged;
+                _controller.ConfigChanged -= Controller_ConfigChanged;
             }
 
             _configChangedHooked = false;

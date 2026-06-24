@@ -12,6 +12,8 @@ namespace Shadowsocks.View
 {
     public partial class MainWindow : FluentWindow
     {
+        private readonly Configuration _config;
+
         /// <summary>
         /// Page to land on when the window first opens. Set by the tray before <see cref="Window.Show"/>;
         /// falls back to the dashboard. Keeps the first navigation deterministic (avoids racing the
@@ -19,8 +21,9 @@ namespace Shadowsocks.View
         /// </summary>
         public Type InitialPage { get; set; }
 
-        public MainWindow()
+        public MainWindow(Configuration config)
         {
+            _config = config;
             InitializeComponent();
 
             // Pages are resolved from the DI container when the NavigationView navigates to them.
@@ -34,7 +37,7 @@ namespace Shadowsocks.View
             // Honor the persisted theme preference. When "follow system" is chosen, watch the OS
             // theme so the window tracks it live; otherwise apply the fixed theme + backdrop.
             // Mica on Win11 gracefully degrades to a solid Fluent surface on Win10.
-            var mode = Global.GuiConfig?.ThemeMode ?? AppThemeMode.System;
+            var mode = _config?.ThemeMode ?? AppThemeMode.System;
             if (mode == AppThemeMode.System)
             {
                 SystemThemeWatcher.Watch(this, WindowBackdropType.Mica, true);
