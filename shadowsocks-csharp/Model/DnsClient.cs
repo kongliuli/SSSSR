@@ -1,7 +1,6 @@
 using ARSoft.Tools.Net;
 using ARSoft.Tools.Net.Dns;
 using Shadowsocks.Enums;
-using Shadowsocks.ViewModel;
 using System;
 using System.Linq;
 using System.Net;
@@ -16,7 +15,7 @@ using System.Threading.Tasks;
 namespace Shadowsocks.Model;
 
 [Serializable]
-public class DnsClient : ViewModelBase
+public class DnsClient : ModelBase
 {
     #region private
 

@@ -1,6 +1,5 @@
 using Shadowsocks.Enums;
 using Shadowsocks.Util;
-using Shadowsocks.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -8,7 +7,7 @@ using System.Linq;
 
 namespace Shadowsocks.Model
 {
-    public class ServerTreeViewModel : ViewModelBase
+    public class ServerTreeViewModel : ModelBase
     {
         public ServerTreeViewModel()
         {

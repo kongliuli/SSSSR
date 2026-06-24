@@ -1,7 +1,6 @@
 using Shadowsocks.Controller.HttpRequest;
 using Shadowsocks.Encryption;
 using Shadowsocks.Enums;
-using Shadowsocks.ViewModel;
 using System;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -9,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace Shadowsocks.Model
 {
     [Serializable]
-    public class ServerSubscribe : ViewModelBase
+    public class ServerSubscribe : ModelBase
     {
         private string _url;
         private string _tag;

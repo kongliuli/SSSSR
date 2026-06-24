@@ -1,5 +1,4 @@
 using Shadowsocks.Enums;
-using Shadowsocks.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace Shadowsocks.Model
 {
     [Serializable]
-    public class Configuration : ViewModelBase
+    public class Configuration : ModelBase
     {
         #region private
 

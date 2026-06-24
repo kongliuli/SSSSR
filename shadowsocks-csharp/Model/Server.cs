@@ -1,7 +1,6 @@
 using Shadowsocks.Model.Transfer;
 using Shadowsocks.Services.Parsing;
 using Shadowsocks.Util;
-using Shadowsocks.ViewModel;
 using System;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -9,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace Shadowsocks.Model
 {
     [Serializable]
-    public class Server : ViewModelBase, ICloneable
+    public class Server : ModelBase, ICloneable
     {
         #region private
 

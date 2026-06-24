@@ -1,5 +1,4 @@
 using Shadowsocks.Util;
-using Shadowsocks.ViewModel;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using System.Threading;
 
 namespace Shadowsocks.Model.Transfer
 {
-    public class ServerSpeedLog : ViewModelBase
+    public class ServerSpeedLog : ModelBase
     {
         private long _totalConnectTimes;
         private long _totalDisconnectTimes;

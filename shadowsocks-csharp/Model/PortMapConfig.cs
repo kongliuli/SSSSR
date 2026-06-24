@@ -1,11 +1,10 @@
 using Shadowsocks.Enums;
-using Shadowsocks.ViewModel;
 using System;
 
 namespace Shadowsocks.Model
 {
     [Serializable]
-    public class PortMapConfig : ViewModelBase
+    public class PortMapConfig : ModelBase
     {
         #region private
 
