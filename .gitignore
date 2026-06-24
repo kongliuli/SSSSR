@@ -346,3 +346,7 @@ healthchecksdb
 
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
+# Stray Node.js artifacts (not part of this .NET project)
+package.json
+package-lock.json
+node_modules/
