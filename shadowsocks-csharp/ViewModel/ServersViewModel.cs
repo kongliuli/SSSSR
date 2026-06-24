@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GongSolutions.Wpf.DragDrop;
+using Shadowsocks.Controller;
 using Shadowsocks.Encryption;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
@@ -14,7 +15,7 @@ namespace Shadowsocks.ViewModel
 {
     /// <summary>
     /// Backing view-model for the Fluent "Servers" page. Presents a master/detail layout:
-    /// a SubTag / Group node tree on the left (built from <see cref="Global.GuiConfig"/>.Configs)
+    /// a SubTag / Group node tree on the left (built from the DI singleton configuration)
     /// and an editor for the selected <see cref="Server"/> on the right.
     /// <para>
     /// Migrated from the legacy <c>ServerConfigWindow</c> / <c>ServerConfigViewModel</c>.
@@ -25,6 +26,8 @@ namespace Shadowsocks.ViewModel
     /// </summary>
     public partial class ServersViewModel : ObservableObject, IDropTarget
     {
+        private readonly Configuration _config;
+        private readonly MainController _controller;
         private readonly ServerConfigViewModel _tree = new();
 
         /// <summary>Candidate encryption methods for the editor combo box.</summary>
@@ -84,8 +87,11 @@ namespace Shadowsocks.ViewModel
         public Server SelectedServer =>
             SelectedNode is { Type: ServerTreeViewType.Server } ? SelectedNode.Server : null;
 
-        public ServersViewModel()
+        public ServersViewModel(Configuration config, MainController controller)
         {
+            _config = config;
+            _controller = controller;
+
             foreach (var name in EncryptorFactory.RegisteredEncryptors.Keys
                          .Where(name => EncryptorFactory.GetEncryptorInfo(name).Display))
             {
@@ -105,7 +111,7 @@ namespace Shadowsocks.ViewModel
         /// <summary>Rebuild the tree from the current in-memory configuration.</summary>
         public void Reload()
         {
-            var configs = Global.GuiConfig?.Configs ?? new List<Server>();
+            var configs = _config?.Configs ?? new List<Server>();
             // ReadServers groups by SubTag/Group exactly like the legacy window.
             // Pass a copy so the tree owns its own list and rebuilds cleanly.
             _tree.ReadServers(configs.ToList());
@@ -213,7 +219,7 @@ namespace Shadowsocks.ViewModel
                 return;
             }
 
-            if (Global.GuiConfig is null)
+            if (_config is null)
             {
                 StatusText = @"配置不可用";
                 return;
@@ -221,26 +227,26 @@ namespace Shadowsocks.ViewModel
 
             // Preserve the currently-selected server across the rebuild, like the old SaveConfig.
             string oldServerId = null;
-            if (Global.GuiConfig.Index >= 0 && Global.GuiConfig.Index < Global.GuiConfig.Configs.Count)
+            if (_config.Index >= 0 && _config.Index < _config.Configs.Count)
             {
-                oldServerId = Global.GuiConfig.Configs[Global.GuiConfig.Index].Id;
+                oldServerId = _config.Configs[_config.Index].Id;
             }
 
-            Global.GuiConfig.Configs = servers;
+            _config.Configs = servers;
             if (oldServerId != null)
             {
                 var currentIndex = servers.FindIndex(s => s.Id == oldServerId);
                 if (currentIndex != -1)
                 {
-                    Global.GuiConfig.Index = currentIndex;
+                    _config.Index = currentIndex;
                 }
             }
 
             // Persist + notify so the running controller picks up the changes.
             // SaveAndNotifyChanged() calls Global.SaveConfig() internally and raises ConfigChanged.
-            if (Global.Controller is not null)
+            if (_controller is not null)
             {
-                Global.Controller.SaveAndNotifyChanged();
+                _controller.SaveAndNotifyChanged();
             }
             else
             {
@@ -259,7 +265,7 @@ namespace Shadowsocks.ViewModel
         [RelayCommand]
         private void ImportFromClipboard()
         {
-            if (Global.GuiConfig is null)
+            if (_config is null)
             {
                 StatusText = @"配置不可用";
                 return;
@@ -291,7 +297,7 @@ namespace Shadowsocks.ViewModel
                 try
                 {
                     var server = new Server(token, null);
-                    Global.GuiConfig.Configs.Add(server);
+                    _config.Configs.Add(server);
                     imported++;
                 }
                 catch (FormatException)
@@ -307,9 +313,9 @@ namespace Shadowsocks.ViewModel
             }
 
             // Persist + notify, then rebuild the tree from the updated configuration.
-            if (Global.Controller is not null)
+            if (_controller is not null)
             {
-                Global.Controller.SaveAndNotifyChanged();
+                _controller.SaveAndNotifyChanged();
             }
             else
             {

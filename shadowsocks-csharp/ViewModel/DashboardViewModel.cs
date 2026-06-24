@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
+using Shadowsocks.Controller;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
 using System;
@@ -19,6 +20,8 @@ namespace Shadowsocks.ViewModel
     {
         private const int MaxPoints = 60;
 
+        private readonly Configuration _config;
+        private readonly MainController _controller;
         private readonly ObservableCollection<double> _downValues = new();
         private readonly ObservableCollection<double> _upValues = new();
         private readonly DispatcherTimer _timer;
@@ -36,8 +39,11 @@ namespace Shadowsocks.ViewModel
         /// <summary>Two-line live speed series (download / upload) for the LiveCharts chart.</summary>
         public ISeries[] SpeedSeries { get; }
 
-        public DashboardViewModel()
+        public DashboardViewModel(Configuration config, MainController controller)
         {
+            _config = config;
+            _controller = controller;
+
             SpeedSeries = new ISeries[]
             {
                 new LineSeries<double> { Name = @"下行", Values = _downValues, GeometrySize = 0, LineSmoothness = 0.6 },
@@ -60,7 +66,7 @@ namespace Shadowsocks.ViewModel
 
         private void Refresh()
         {
-            var config = Global.GuiConfig;
+            var config = _config;
             if (config is null)
             {
                 return;
@@ -123,12 +129,12 @@ namespace Shadowsocks.ViewModel
         }
 
         [RelayCommand]
-        private void SetModeDirect() => _ = Task.Run(() => Global.Controller?.ToggleMode(ProxyMode.Direct));
+        private void SetModeDirect() => _ = Task.Run(() => _controller.ToggleMode(ProxyMode.Direct));
 
         [RelayCommand]
-        private void SetModePac() => _ = Task.Run(() => Global.Controller?.ToggleMode(ProxyMode.Pac));
+        private void SetModePac() => _ = Task.Run(() => _controller.ToggleMode(ProxyMode.Pac));
 
         [RelayCommand]
-        private void SetModeGlobal() => _ = Task.Run(() => Global.Controller?.ToggleMode(ProxyMode.Global));
+        private void SetModeGlobal() => _ = Task.Run(() => _controller.ToggleMode(ProxyMode.Global));
     }
 }

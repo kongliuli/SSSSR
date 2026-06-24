@@ -27,6 +27,8 @@ namespace Shadowsocks.ViewModel
     /// </summary>
     public partial class SettingsViewModel : ObservableObject
     {
+        private readonly MainController _controller;
+
         /// <summary>The working configuration copy bound by the page. Replaced on each <see cref="Reload"/>.</summary>
         [ObservableProperty] private Configuration _config = new();
 
@@ -97,8 +99,9 @@ namespace Shadowsocks.ViewModel
 
         #endregion
 
-        public SettingsViewModel()
+        public SettingsViewModel(MainController controller)
         {
+            _controller = controller;
             _selectedTheme = Themes[0];
             Reload();
         }
@@ -139,9 +142,9 @@ namespace Shadowsocks.ViewModel
             {
                 Config.ThemeMode = value.Mode;
             }
-            if (Global.GuiConfig != null && Global.GuiConfig.ThemeMode != value.Mode)
+            if (Config != null && Config.ThemeMode != value.Mode)
             {
-                Global.GuiConfig.ThemeMode = value.Mode;
+                Config.ThemeMode = value.Mode;
                 Global.SaveConfig();
             }
         }
@@ -210,18 +213,10 @@ namespace Shadowsocks.ViewModel
             // Flush the edited DNS client list back into the working copy before persisting.
             Config.DnsClients = new List<DnsClient>(DnsClients);
 
-            var langChanged = Config.LangName != Global.GuiConfig?.LangName;
+            var langChanged = Config.LangName != _controller?.LiveConfig?.LangName;
 
             // Persist + reload through the controller, mirroring the old SettingsWindow.SaveConfig.
-            if (Global.Controller is not null)
-            {
-                Global.Controller.SaveServersConfig(Config, true);
-            }
-            else
-            {
-                Global.GuiConfig?.CopyFrom(Config);
-                Global.SaveConfig();
-            }
+            _controller?.SaveServersConfig(Config, true);
 
             // Apply the Windows auto-startup flag if it changed.
             if (AutoStartup != Shadowsocks.Controller.AutoStartup.Check())
