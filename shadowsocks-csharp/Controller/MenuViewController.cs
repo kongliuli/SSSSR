@@ -31,6 +31,7 @@ namespace Shadowsocks.Controller
         // and it should just do anything related to the config form
 
         private readonly MainController controller;
+        private readonly Configuration _config;
         private readonly HttpRequest.UpdateChecker updateChecker;
 
         private readonly TaskbarIcon _notifyIcon;
@@ -60,9 +61,10 @@ namespace Shadowsocks.Controller
         private string _urlToOpen;
         private System.Timers.Timer timerDelayCheckUpdate;
 
-        public MenuViewController(MainController controller)
+        public MenuViewController(MainController controller, Configuration config)
         {
             this.controller = controller;
+            _config = config;
 
             LoadMenu();
 
@@ -105,7 +107,7 @@ namespace Shadowsocks.Controller
         {
             timerDelayCheckUpdate.Interval = 1000.0 * 60 * 60 * 1;// 1 hour
 
-            var cfg = Global.GuiConfig;
+            var cfg = _config;
             if (cfg.AutoCheckUpdate)
             {
                 updateChecker.Check(cfg, false);
@@ -121,7 +123,7 @@ namespace Shadowsocks.Controller
 
         private void UpdateTrayIcon()
         {
-            var config = Global.GuiConfig;
+            var config = _config;
             var enabled = config.SysProxyMode is not ProxyMode.NoModify and not ProxyMode.Direct;
             var global = config.SysProxyMode == ProxyMode.Global;
             var random = config.Random;
@@ -359,7 +361,7 @@ namespace Shadowsocks.Controller
             if (!string.IsNullOrWhiteSpace(Global.UpdateNodeChecker.FreeNodeResult))
             {
                 Global.UpdateNodeChecker.FreeNodeResult = Global.UpdateNodeChecker.FreeNodeResult.TrimEnd('\r', '\n', ' ');
-                var config = Global.GuiConfig;
+                var config = _config;
                 var selectedServer = config.Configs.ElementAtOrDefault(config.Index);
                 try
                 {
@@ -610,7 +612,7 @@ namespace Shadowsocks.Controller
 
         private void LoadCurrentConfiguration()
         {
-            var config = Global.GuiConfig;
+            var config = _config;
             UpdateServersMenu();
             UpdateSysProxyMode(config);
 
@@ -642,7 +644,7 @@ namespace Shadowsocks.Controller
                 items.RemoveAt(0);
             }
 
-            var configuration = Global.GuiConfig;
+            var configuration = _config;
             for (var i = 0; i < configuration.Configs.Count;)
             {
                 configuration.Configs[i].Index = ++i;
@@ -1041,12 +1043,12 @@ namespace Shadowsocks.Controller
 
         private void CheckUpdate_Click(object sender, RoutedEventArgs e)
         {
-            updateChecker.Check(Global.GuiConfig, true);
+            updateChecker.Check(_config, true);
         }
 
         private void CheckNodeUpdate_Click(object sender, RoutedEventArgs e)
         {
-            Global.UpdateSubscribeManager.CreateTask(Global.GuiConfig, Global.UpdateNodeChecker, true);
+            Global.UpdateSubscribeManager.CreateTask(_config, Global.UpdateNodeChecker, true);
         }
 
         private void ShowLogItem_Click(object sender, RoutedEventArgs e)
