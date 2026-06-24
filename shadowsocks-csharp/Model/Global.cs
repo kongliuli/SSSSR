@@ -24,10 +24,13 @@ namespace Shadowsocks.Model
 
         public static IPAddress IpAny => OSSupportsLocalIPv6 ? IPAddress.IPv6Any : IPAddress.Any;
 
+        [Obsolete("Use injected Configuration via DI (AppHost.Get<Configuration>()) instead.")]
         public static Configuration GuiConfig;
 
+        [Obsolete("Use injected MainController via DI (AppHost.Get<MainController>()) instead.")]
         public static MainController Controller;
 
+        [Obsolete("Use injected MenuViewController via DI (AppHost.Get<MenuViewController>()) instead.")]
         public static MenuViewController ViewController;
 
         public static UpdateNode UpdateNodeChecker;
