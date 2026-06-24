@@ -21,6 +21,7 @@ namespace Shadowsocks.Controller
         // manipulates UI
         // interacts with low level logic
 
+        private readonly Configuration _config;
         private Listener _listener;
         private List<Listener> _portMapListener;
         private PACDaemon _pacDaemon;
@@ -56,11 +57,16 @@ namespace Shadowsocks.Controller
 
         #endregion
 
-        public MainController()
+        /// <summary>Expose the live configuration singleton for consumers that need
+        /// read-only access (e.g. to compare a working copy against the live state).</summary>
+        public Configuration LiveConfig => _config;
+
+        public MainController(Configuration config)
         {
+            _config = config;
             _transfer = ServerTransferTotal.Load();
 
-            foreach (var server in Global.GuiConfig.Configs)
+            foreach (var server in _config.Configs)
             {
                 if (_transfer.Servers.TryGetValue(server.Id, out var st))
                 {
@@ -139,14 +145,14 @@ namespace Shadowsocks.Controller
         /// <param name="mergeConfig"></param>
         public void MergeConfiguration(Configuration mergeConfig)
         {
-            AppendConfiguration(Global.GuiConfig, mergeConfig.Configs);
+            AppendConfiguration(_config, mergeConfig.Configs);
             SaveAndReload();
         }
 
         public void SaveServersConfig(Configuration config, bool reload)
         {
-            var missingServers = MergeConfiguration(Global.GuiConfig, config.Configs);
-            Global.GuiConfig.CopyFrom(config);
+            var missingServers = MergeConfiguration(_config, config.Configs);
+            _config.CopyFrom(config);
             foreach (var s in missingServers)
             {
                 s.Connections.CloseAll();
@@ -165,8 +171,8 @@ namespace Shadowsocks.Controller
         public void SaveServersPortMap(Configuration config)
         {
             StopPortMap();
-            Global.GuiConfig.PortMap = config.PortMap;
-            Global.GuiConfig.FlushPortMapCache();
+            _config.PortMap = config.PortMap;
+            _config.FlushPortMapCache();
             LoadPortMap();
             SaveAndNotifyChanged();
         }
@@ -176,7 +182,7 @@ namespace Shadowsocks.Controller
         /// </summary>
         public void SelectServerIndex(int index)
         {
-            Global.GuiConfig.Index = index;
+            _config.Index = index;
             SaveAndNotifyChanged();
         }
 
@@ -195,17 +201,17 @@ namespace Shadowsocks.Controller
                     var server = new Server(url, force_group);
                     if (toLast)
                     {
-                        Global.GuiConfig.Configs.Add(server);
+                        _config.Configs.Add(server);
                     }
                     else
                     {
-                        var index = Global.GuiConfig.Index + 1;
-                        if (index < 0 || index > Global.GuiConfig.Configs.Count)
+                        var index = _config.Index + 1;
+                        if (index < 0 || index > _config.Configs.Count)
                         {
-                            index = Global.GuiConfig.Configs.Count;
+                            index = _config.Configs.Count;
                         }
 
-                        Global.GuiConfig.Configs.Insert(index, server);
+                        _config.Configs.Insert(index, server);
                     }
                 }
                 if (i > 0)
@@ -238,27 +244,27 @@ namespace Shadowsocks.Controller
                     if (sub.Success)
                     {
                         var res = Base64.DecodeUrlSafeBase64(sub.Groups[1].Value);
-                        if (Global.GuiConfig.ServerSubscribes.All(serverSubscribe => serverSubscribe.Url != res))
+                        if (_config.ServerSubscribes.All(serverSubscribe => serverSubscribe.Url != res))
                         {
                             var newSub = new ServerSubscribe { Url = res };
                             newSubscribes.Add(newSub);
-                            Global.GuiConfig.ServerSubscribes.Add(newSub);
+                            _config.ServerSubscribes.Add(newSub);
                         }
                         else
                         {
-                            existSubscribes.Add(Global.GuiConfig.ServerSubscribes.Find(serverSubscribe => serverSubscribe.Url == res));
+                            existSubscribes.Add(_config.ServerSubscribes.Find(serverSubscribe => serverSubscribe.Url == res));
                         }
                     }
                 }
                 if (newSubscribes.Count > 0)
                 {
                     SaveAndNotifyChanged();
-                    Global.UpdateSubscribeManager.CreateTask(Global.GuiConfig, Global.UpdateNodeChecker, true, newSubscribes);
+                    Global.UpdateSubscribeManager.CreateTask(_config, Global.UpdateNodeChecker, true, newSubscribes);
                     return true;
                 }
                 if (existSubscribes.Count > 0)
                 {
-                    Global.UpdateSubscribeManager.CreateTask(Global.GuiConfig, Global.UpdateNodeChecker, true, existSubscribes);
+                    Global.UpdateSubscribeManager.CreateTask(_config, Global.UpdateNodeChecker, true, existSubscribes);
                     return false;
                 }
             }
@@ -275,8 +281,8 @@ namespace Shadowsocks.Controller
         /// </summary>
         public void ToggleMode(ProxyMode mode)
         {
-            ProxyMode oldMode = Global.GuiConfig.SysProxyMode;
-            Global.GuiConfig.SysProxyMode = mode;
+            ProxyMode oldMode = _config.SysProxyMode;
+            _config.SysProxyMode = mode;
             ReloadPacServer();
             if (oldMode is not ProxyMode.NoModify && mode is ProxyMode.NoModify)
             {
@@ -295,13 +301,13 @@ namespace Shadowsocks.Controller
         /// <param name="mode"></param>
         public void ToggleRuleMode(ProxyRuleMode mode)
         {
-            Global.GuiConfig.ProxyRuleMode = mode;
+            _config.ProxyRuleMode = mode;
             SaveAndNotifyChanged();
         }
 
         public void ToggleSelectRandom(bool enabled)
         {
-            Global.GuiConfig.Random = enabled;
+            _config.Random = enabled;
             if (!enabled)
             {
                 DisconnectAllConnections(true);
@@ -311,19 +317,19 @@ namespace Shadowsocks.Controller
 
         public void ToggleSameHostForSameTargetRandom(bool enabled)
         {
-            Global.GuiConfig.SameHostForSameTarget = enabled;
+            _config.SameHostForSameTarget = enabled;
             SaveAndNotifyChanged();
         }
 
         public void ToggleSelectAutoCheckUpdate(bool enabled)
         {
-            Global.GuiConfig.AutoCheckUpdate = enabled;
+            _config.AutoCheckUpdate = enabled;
             Global.SaveConfig();
         }
 
         public void ToggleSelectAllowPreRelease(bool enabled)
         {
-            Global.GuiConfig.IsPreRelease = enabled;
+            _config.IsPreRelease = enabled;
             Global.SaveConfig();
         }
 
@@ -361,14 +367,14 @@ namespace Shadowsocks.Controller
         private void LoadPortMap()
         {
             _portMapListener = new List<Listener>();
-            foreach (var pair in Global.GuiConfig.PortMapCache)
+            foreach (var pair in _config.PortMapCache)
             {
                 try
                 {
-                    var local = new Local(Global.GuiConfig, _transfer, _chnRangeSet);
+                    var local = new Local(_config, _transfer, _chnRangeSet);
                     var services = new List<Listener.IService> { local };
                     var listener = new Listener(services);
-                    listener.Start(Global.GuiConfig, pair.Key);
+                    listener.Start(_config, pair.Key);
                     _portMapListener.Add(listener);
                 }
                 catch (Exception e)
@@ -392,17 +398,17 @@ namespace Shadowsocks.Controller
 
             _listener?.Stop();
             _httpProxyRunner?.Stop();
-            if (Global.GuiConfig.SysProxyMode is not ProxyMode.NoModify)
+            if (_config.SysProxyMode is not ProxyMode.NoModify)
             {
                 SystemProxy.Restore();
             }
-            ServerTransferTotal.Save(_transfer, Global.GuiConfig.Configs);
+            ServerTransferTotal.Save(_transfer, _config.Configs);
         }
 
         public void ClearTransferTotal(string serverId)
         {
             _transfer.Clear(serverId);
-            var server = Global.GuiConfig.Configs.Find(s => s.Id == serverId);
+            var server = _config.Configs.Find(s => s.Id == serverId);
             server?.SpeedLog.ClearTrans();
         }
 
@@ -418,12 +424,12 @@ namespace Shadowsocks.Controller
 
         public void UpdatePACFromGFWList()
         {
-            _gfwListUpdater?.UpdatePacFromGfwList(Global.GuiConfig);
+            _gfwListUpdater?.UpdatePacFromGfwList(_config);
         }
 
         public void UpdatePACFromOnlinePac(string url)
         {
-            _gfwListUpdater?.UpdateOnlinePac(Global.GuiConfig, url);
+            _gfwListUpdater?.UpdateOnlinePac(_config, url);
         }
 
         private void ReloadPacServer()
@@ -433,7 +439,7 @@ namespace Shadowsocks.Controller
                 _pacDaemon = new PACDaemon();
                 _pacDaemon.PACFileChanged += (o, args) =>
                 {
-                    _pacServer?.UpdatePacUrl(Global.GuiConfig);
+                    _pacServer?.UpdatePacUrl(_config);
                     UpdateSystemProxy();
                 };
                 _pacDaemon.UserRuleFileChanged += PacDaemon_UserRuleFileChanged;
@@ -444,7 +450,7 @@ namespace Shadowsocks.Controller
                 _pacServer = new PACServer(_pacDaemon);
             }
 
-            _pacServer.UpdatePacUrl(Global.GuiConfig);
+            _pacServer.UpdatePacUrl(_config);
         }
 
         private void ReloadIPRange()
@@ -470,9 +476,15 @@ namespace Shadowsocks.Controller
         {
             StopPortMap();
             // some logic in configuration updated the config when saving, we need to read it again
-            Global.GuiConfig = MergeGetConfiguration(Global.GuiConfig);
-            Global.GuiConfig.FlushPortMapCache();
-            Logging.SaveToFile = Global.GuiConfig.LogEnable;
+            // The DI singleton is the authoritative in-memory copy; refresh from disk and
+            // overlay in-memory server runtime state (SpeedLog, Connections, etc.).
+            var reloaded = MergeGetConfiguration(_config);
+            if (reloaded != null)
+            {
+                _config.CopyFrom(reloaded);
+            }
+            _config.FlushPortMapCache();
+            Logging.SaveToFile = _config.LogEnable;
             Logging.OpenLogFile();
 
             ReloadProxyRule();
@@ -490,17 +502,17 @@ namespace Shadowsocks.Controller
             _httpProxyRunner.Stop();
             try
             {
-                _httpProxyRunner.Start(Global.GuiConfig);
+                _httpProxyRunner.Start(_config);
 
-                var local = new Local(Global.GuiConfig, _transfer, _chnRangeSet);
+                var local = new Local(_config, _transfer, _chnRangeSet);
                 var services = new List<Listener.IService>
                 {
                     local,
                     _pacServer,
-                    new HttpPortForwarder(_httpProxyRunner.RunningPort, Global.GuiConfig)
+                    new HttpPortForwarder(_httpProxyRunner.RunningPort, _config)
                 };
                 _listener = new Listener(services);
-                _listener.Start(Global.GuiConfig, 0);
+                _listener.Start(_config, 0);
             }
             catch (Exception e)
             {
@@ -516,7 +528,7 @@ namespace Shadowsocks.Controller
             UpdateSystemProxy();
         }
 
-        private static void ThrowSocketException(ref Exception e)
+        private void ThrowSocketException(ref Exception e)
         {
             // TODO:translate Microsoft language into human language
             // i.e. An attempt was made to access a socket in a way forbidden by its access permissions => Port already in use
@@ -530,12 +542,12 @@ namespace Shadowsocks.Controller
             {
                 case SocketError.AddressAlreadyInUse:
                 {
-                    e = new Exception(string.Format(I18NUtil.GetAppStringValue(@"PortInUse"), Global.GuiConfig.LocalPort), se);
+                    e = new Exception(string.Format(I18NUtil.GetAppStringValue(@"PortInUse"), _config.LocalPort), se);
                     break;
                 }
                 case SocketError.AccessDenied:
                 {
-                    e = new Exception(string.Format(I18NUtil.GetAppStringValue(@"PortReserved"), Global.GuiConfig.LocalPort), se);
+                    e = new Exception(string.Format(I18NUtil.GetAppStringValue(@"PortReserved"), _config.LocalPort), se);
                     break;
                 }
             }
@@ -543,7 +555,7 @@ namespace Shadowsocks.Controller
 
         private void UpdateSystemProxy()
         {
-            SystemProxy.Update(Global.GuiConfig, _pacServer);
+            SystemProxy.Update(_config, _pacServer);
         }
 
         private void PacDaemon_UserRuleFileChanged(object sender, EventArgs e)
@@ -579,7 +591,7 @@ namespace Shadowsocks.Controller
         /// </summary>
         public void DisconnectAllConnections(bool checkSwitchAutoCloseAll = false)
         {
-            var config = Global.GuiConfig;
+            var config = _config;
             if (checkSwitchAutoCloseAll && !config.CheckSwitchAutoCloseAll)
             {
                 Console.WriteLine(@"config.checkSwitchAutoCloseAll:False");
