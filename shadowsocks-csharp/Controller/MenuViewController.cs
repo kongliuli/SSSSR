@@ -33,6 +33,9 @@ namespace Shadowsocks.Controller
         private readonly MainController controller;
         private readonly Configuration _config;
         private readonly HttpRequest.UpdateChecker updateChecker;
+        private readonly UpdateNode _updateNodeChecker;
+        private readonly UpdateSubscribeManager _updateSubscribeManager;
+        private readonly IConfigPersistenceService _configPersistence;
 
         private readonly TaskbarIcon _notifyIcon;
         private ContextMenu _contextMenu;
@@ -61,10 +64,13 @@ namespace Shadowsocks.Controller
         private string _urlToOpen;
         private System.Timers.Timer timerDelayCheckUpdate;
 
-        public MenuViewController(MainController controller, Configuration config)
+        public MenuViewController(MainController controller, Configuration config, UpdateNode updateNodeChecker, UpdateSubscribeManager updateSubscribeManager, IConfigPersistenceService configPersistence)
         {
             this.controller = controller;
             _config = config;
+            _updateNodeChecker = updateNodeChecker;
+            _updateSubscribeManager = updateSubscribeManager;
+            _configPersistence = configPersistence;
 
             LoadMenu();
 
@@ -91,10 +97,7 @@ namespace Shadowsocks.Controller
             updateChecker.NewVersionNotFound += updateChecker_NewVersionNotFound;
             updateChecker.NewVersionFoundFailed += UpdateChecker_NewVersionFoundFailed;
 
-            Global.UpdateNodeChecker = new UpdateNode();
-            Global.UpdateNodeChecker.NewFreeNodeFound += UpdateNodeCheckerNewNodeFound;
-
-            Global.UpdateSubscribeManager = new UpdateSubscribeManager();
+            _updateNodeChecker.NewFreeNodeFound += UpdateNodeCheckerNewNodeFound;
 
             LoadCurrentConfiguration();
 
@@ -110,10 +113,10 @@ namespace Shadowsocks.Controller
             var cfg = _config;
             if (cfg.AutoCheckUpdate)
             {
-                updateChecker.Check(cfg, false);
+                _ = updateChecker.Check(cfg, false);
             }
 
-            Global.UpdateSubscribeManager.CreateTask(cfg, Global.UpdateNodeChecker, false);
+            _updateSubscribeManager.CreateTask(cfg, _updateNodeChecker, false);
         }
 
         private static void ControllerError(object sender, ErrorEventArgs e)
@@ -358,24 +361,24 @@ namespace Shadowsocks.Controller
         {
             string lastGroup = null;
             var count = 0;
-            if (!string.IsNullOrWhiteSpace(Global.UpdateNodeChecker.FreeNodeResult))
+            if (!string.IsNullOrWhiteSpace(_updateNodeChecker.FreeNodeResult))
             {
-                Global.UpdateNodeChecker.FreeNodeResult = Global.UpdateNodeChecker.FreeNodeResult.TrimEnd('\r', '\n', ' ');
+                _updateNodeChecker.FreeNodeResult = _updateNodeChecker.FreeNodeResult.TrimEnd('\r', '\n', ' ');
                 var config = _config;
                 var selectedServer = config.Configs.ElementAtOrDefault(config.Index);
                 try
                 {
-                    Global.UpdateNodeChecker.FreeNodeResult = Base64.DecodeBase64(Global.UpdateNodeChecker.FreeNodeResult);
+                    _updateNodeChecker.FreeNodeResult = Base64.DecodeBase64(_updateNodeChecker.FreeNodeResult);
                 }
                 catch
                 {
-                    Global.UpdateNodeChecker.FreeNodeResult = string.Empty;
+                    _updateNodeChecker.FreeNodeResult = string.Empty;
                 }
-                var urls = Global.UpdateNodeChecker.FreeNodeResult.GetLines().ToList();
+                var urls = _updateNodeChecker.FreeNodeResult.GetLines().ToList();
                 urls.RemoveAll(url => !url.StartsWith(@"ssr://"));
                 if (urls.Count > 0)
                 {
-                    lastGroup = Global.UpdateSubscribeManager.CurrentServerSubscribe.OriginTag;
+                    lastGroup = _updateSubscribeManager.CurrentServerSubscribe.OriginTag;
                     if (string.IsNullOrEmpty(lastGroup))
                     {
                         foreach (var url in urls)
@@ -391,7 +394,7 @@ namespace Shadowsocks.Controller
                                     }
 
                                     var serverSubscribe = config.ServerSubscribes.Find(sub =>
-                                    sub.Url == Global.UpdateSubscribeManager.CurrentServerSubscribe.Url
+                                    sub.Url == _updateSubscribeManager.CurrentServerSubscribe.Url
                                     && string.IsNullOrEmpty(sub.OriginTag));
 
                                     if (serverSubscribe != null)
@@ -410,7 +413,7 @@ namespace Shadowsocks.Controller
                     }
                     if (string.IsNullOrEmpty(lastGroup))
                     {
-                        lastGroup = Global.UpdateSubscribeManager.CurrentServerSubscribe.UrlMd5;
+                        lastGroup = _updateSubscribeManager.CurrentServerSubscribe.UrlMd5;
                     }
 
                     //Find old servers
@@ -506,7 +509,7 @@ namespace Shadowsocks.Controller
                     //If Update Success
                     if (count > 0)
                     {
-                        foreach (var serverSubscribe in config.ServerSubscribes.Where(serverSubscribe => serverSubscribe.Url == Global.UpdateNodeChecker.SubscribeTask.Url))
+                        foreach (var serverSubscribe in config.ServerSubscribes.Where(serverSubscribe => serverSubscribe.Url == _updateNodeChecker.SubscribeTask.Url))
                         {
                             serverSubscribe.LastUpdateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         }
@@ -520,7 +523,7 @@ namespace Shadowsocks.Controller
 
             if (count > 0)
             {
-                if (Global.UpdateNodeChecker.Notify)
+                if (_updateNodeChecker.Notify)
                 {
                     _notifyIcon.ShowBalloonTip(I18NUtil.GetAppStringValue(@"Success"), string.Format(I18NUtil.GetAppStringValue(@"UpdateSubscribeSuccess"), lastGroup), BalloonIcon.Info);
                 }
@@ -529,36 +532,43 @@ namespace Shadowsocks.Controller
             {
                 if (string.IsNullOrEmpty(lastGroup))
                 {
-                    lastGroup = Global.UpdateNodeChecker.SubscribeTask.Tag;
+                    lastGroup = _updateNodeChecker.SubscribeTask.Tag;
                 }
 
-                if (Global.UpdateNodeChecker.Notify)
+                if (_updateNodeChecker.Notify)
                 {
                     _notifyIcon.ShowBalloonTip(I18NUtil.GetAppStringValue(@"Error"), string.Format(I18NUtil.GetAppStringValue(@"UpdateSubscribeFailure"), lastGroup), BalloonIcon.Info);
                 }
             }
 
-            Global.UpdateSubscribeManager.Next();
+            _updateSubscribeManager.Next();
         }
 
         private void updateChecker_NewVersionFound(object sender, EventArgs e)
         {
-            Application.Current.Dispatcher?.InvokeAsync(() =>
+            _ = Application.Current.Dispatcher?.InvokeAsync(() =>
             {
-                if (updateChecker.Found)
+                try
                 {
-                    if (UpdateItem.Visibility != Visibility.Visible)
+                    if (updateChecker.Found)
                     {
-                        _notifyIcon.ShowBalloonTip(
-                                string.Format(I18NUtil.GetAppStringValue(@"NewVersionFound"),
-                                        HttpRequest.UpdateChecker.Name, updateChecker.LatestVersionNumber),
-                                I18NUtil.GetAppStringValue(@"ClickMenuToDownload"), BalloonIcon.Info);
+                        if (UpdateItem.Visibility != Visibility.Visible)
+                        {
+                            _notifyIcon.ShowBalloonTip(
+                                    string.Format(I18NUtil.GetAppStringValue(@"NewVersionFound"),
+                                            HttpRequest.UpdateChecker.Name, updateChecker.LatestVersionNumber),
+                                    I18NUtil.GetAppStringValue(@"ClickMenuToDownload"), BalloonIcon.Info);
+                        }
+                        _moreMenu.Icon = CreateSelectedIcon();
+                        _updateMenu.Icon = CreateSelectedIcon();
+                        UpdateItem.Visibility = Visibility.Visible;
+                        UpdateItem.Header = string.Format(I18NUtil.GetAppStringValue(@"NewVersionAvailable"),
+                                HttpRequest.UpdateChecker.Name, updateChecker.LatestVersionNumber);
                     }
-                    _moreMenu.Icon = CreateSelectedIcon();
-                    _updateMenu.Icon = CreateSelectedIcon();
-                    UpdateItem.Visibility = Visibility.Visible;
-                    UpdateItem.Header = string.Format(I18NUtil.GetAppStringValue(@"NewVersionAvailable"),
-                            HttpRequest.UpdateChecker.Name, updateChecker.LatestVersionNumber);
+                }
+                catch (Exception e)
+                {
+                    Logging.LogUsefulException(e);
                 }
             });
         }
@@ -799,24 +809,31 @@ namespace Shadowsocks.Controller
 
         private void Import_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
-                var dlg = new OpenFileDialog
+                try
                 {
-                    InitialDirectory = Directory.GetCurrentDirectory()
-                };
-                if (dlg.ShowDialog() == true)
+                    var dlg = new OpenFileDialog
+                    {
+                        InitialDirectory = Directory.GetCurrentDirectory()
+                    };
+                    if (dlg.ShowDialog() == true)
+                    {
+                        var name = dlg.FileName;
+                        var cfg = _configPersistence.LoadFile(name);
+                        if (cfg.IsDefaultConfig())
+                        {
+                            MessageBox.Show(I18NUtil.GetAppStringValue(@"ImportConfigFailed"), HttpRequest.UpdateChecker.Name);
+                        }
+                        else
+                        {
+                            controller.MergeConfiguration(cfg);
+                        }
+                    }
+                }
+                catch (Exception e)
                 {
-                    var name = dlg.FileName;
-                    var cfg = Global.LoadFile(name);
-                    if (cfg.IsDefaultConfig())
-                    {
-                        MessageBox.Show(I18NUtil.GetAppStringValue(@"ImportConfigFailed"), HttpRequest.UpdateChecker.Name);
-                    }
-                    else
-                    {
-                        controller.MergeConfiguration(cfg);
-                    }
+                    Logging.LogUsefulException(e);
                 }
             });
         }
@@ -900,47 +917,47 @@ namespace Shadowsocks.Controller
 
         private void NoModifyItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleMode(ProxyMode.NoModify); });
+            _ = Task.Run(() => { try { controller.ToggleMode(ProxyMode.NoModify); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void EnableItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleMode(ProxyMode.Direct); });
+            _ = Task.Run(() => { try { controller.ToggleMode(ProxyMode.Direct); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void GlobalModeItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleMode(ProxyMode.Global); });
+            _ = Task.Run(() => { try { controller.ToggleMode(ProxyMode.Global); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void PACModeItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleMode(ProxyMode.Pac); });
+            _ = Task.Run(() => { try { controller.ToggleMode(ProxyMode.Pac); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void RuleBypassLanItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleRuleMode(ProxyRuleMode.BypassLan); });
+            _ = Task.Run(() => { try { controller.ToggleRuleMode(ProxyRuleMode.BypassLan); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void RuleBypassChinaItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleRuleMode(ProxyRuleMode.BypassLanAndChina); });
+            _ = Task.Run(() => { try { controller.ToggleRuleMode(ProxyRuleMode.BypassLanAndChina); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void RuleBypassNotChinaItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleRuleMode(ProxyRuleMode.BypassLanAndNotChina); });
+            _ = Task.Run(() => { try { controller.ToggleRuleMode(ProxyRuleMode.BypassLanAndNotChina); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void RuleUserItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleRuleMode(ProxyRuleMode.UserCustom); });
+            _ = Task.Run(() => { try { controller.ToggleRuleMode(ProxyRuleMode.UserCustom); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void RuleBypassDisableItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.ToggleRuleMode(ProxyRuleMode.Disable); });
+            _ = Task.Run(() => { try { controller.ToggleRuleMode(ProxyRuleMode.Disable); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         private void SelectRandomItem_Click(object sender, RoutedEventArgs e)
@@ -948,11 +965,11 @@ namespace Shadowsocks.Controller
             SelectRandomItem.IsChecked = !SelectRandomItem.IsChecked;
             if (SelectRandomItem.IsChecked)
             {
-                Task.Run(() => { controller.ToggleSelectRandom(true); });
+                _ = Task.Run(() => { try { controller.ToggleSelectRandom(true); } catch (Exception e) { Logging.LogUsefulException(e); } });
             }
             else
             {
-                Task.Run(() => { controller.ToggleSelectRandom(false); });
+                _ = Task.Run(() => { try { controller.ToggleSelectRandom(false); } catch (Exception e) { Logging.LogUsefulException(e); } });
             }
         }
 
@@ -973,11 +990,11 @@ namespace Shadowsocks.Controller
             sameHostForSameTargetItem.IsChecked = !sameHostForSameTargetItem.IsChecked;
             if (sameHostForSameTargetItem.IsChecked)
             {
-                Task.Run(() => { controller.ToggleSameHostForSameTargetRandom(true); });
+                _ = Task.Run(() => { try { controller.ToggleSameHostForSameTargetRandom(true); } catch (Exception e) { Logging.LogUsefulException(e); } });
             }
             else
             {
-                Task.Run(() => { controller.ToggleSameHostForSameTargetRandom(false); });
+                _ = Task.Run(() => { try { controller.ToggleSameHostForSameTargetRandom(false); } catch (Exception e) { Logging.LogUsefulException(e); } });
             }
         }
 
@@ -1034,21 +1051,28 @@ namespace Shadowsocks.Controller
         {
             var item = (MenuItem)sender;
             var index = (int)item.Tag;
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
-                controller.DisconnectAllConnections(true);
-                controller.SelectServerIndex(index);
+                try
+                {
+                    controller.DisconnectAllConnections(true);
+                    controller.SelectServerIndex(index);
+                }
+                catch (Exception e)
+                {
+                    Logging.LogUsefulException(e);
+                }
             });
         }
 
         private void CheckUpdate_Click(object sender, RoutedEventArgs e)
         {
-            updateChecker.Check(_config, true);
+            _ = updateChecker.Check(_config, true);
         }
 
         private void CheckNodeUpdate_Click(object sender, RoutedEventArgs e)
         {
-            Global.UpdateSubscribeManager.CreateTask(_config, Global.UpdateNodeChecker, true);
+            _updateSubscribeManager.CreateTask(_config, _updateNodeChecker, true);
         }
 
         private void ShowLogItem_Click(object sender, RoutedEventArgs e)
@@ -1073,7 +1097,7 @@ namespace Shadowsocks.Controller
 
         private void DisconnectCurrent_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { controller.DisconnectAllConnections(); });
+            _ = Task.Run(() => { try { controller.DisconnectAllConnections(); } catch (Exception e) { Logging.LogUsefulException(e); } });
         }
 
         public void ImportAddress(string text)
@@ -1119,94 +1143,108 @@ namespace Shadowsocks.Controller
 
         private void ScanQRCodeItem_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
-                var w = (int)SystemParameters.VirtualScreenWidth;
-                var h = (int)SystemParameters.VirtualScreenHeight;
-                var x = (int)SystemParameters.VirtualScreenLeft;
-                var y = (int)SystemParameters.VirtualScreenTop;
-                var fullImage = new Bitmap(w, h);
-                using (var g = Graphics.FromImage(fullImage))
+                try
                 {
-                    g.CopyFromScreen(x, y,
-                            0, 0,
-                            fullImage.Size,
-                            CopyPixelOperation.SourceCopy);
-                }
-
-                const int maxTry = 10;
-                for (var i = 0; i < maxTry; i++)
-                {
-                    var marginLeft = (int)((double)fullImage.Width * i / 2.5 / maxTry);
-                    var marginTop = (int)((double)fullImage.Height * i / 2.5 / maxTry);
-                    var cropRect = new Rectangle(marginLeft, marginTop, fullImage.Width - marginLeft * 2,
-                            fullImage.Height - marginTop * 2);
-                    var target = new Bitmap(w, h);
-
-                    var imageScale = w / (double)cropRect.Width;
-                    using (var g = Graphics.FromImage(target))
+                    var w = (int)SystemParameters.VirtualScreenWidth;
+                    var h = (int)SystemParameters.VirtualScreenHeight;
+                    var x = (int)SystemParameters.VirtualScreenLeft;
+                    var y = (int)SystemParameters.VirtualScreenTop;
+                    var fullImage = new Bitmap(w, h);
+                    using (var g = Graphics.FromImage(fullImage))
                     {
-                        g.DrawImage(fullImage,
-                        new Rectangle(0, 0, target.Width, target.Height),
-                                cropRect,
-                                GraphicsUnit.Pixel);
+                        g.CopyFromScreen(x, y,
+                                0, 0,
+                                fullImage.Size,
+                                CopyPixelOperation.SourceCopy);
                     }
 
-                    var result = QrCodeUtils.ScanBitmap(target);
-                    if (result != null)
+                    const int maxTry = 10;
+                    for (var i = 0; i < maxTry; i++)
                     {
-                        var success = controller.AddServerBySsUrl(result.Text);
-                        var successSub = controller.AddSubscribeUrl(result.Text);
-                        Application.Current.Dispatcher?.InvokeAsync(() =>
+                        var marginLeft = (int)((double)fullImage.Width * i / 2.5 / maxTry);
+                        var marginTop = (int)((double)fullImage.Height * i / 2.5 / maxTry);
+                        var cropRect = new Rectangle(marginLeft, marginTop, fullImage.Width - marginLeft * 2,
+                                fullImage.Height - marginTop * 2);
+                        var target = new Bitmap(w, h);
+
+                        var imageScale = w / (double)cropRect.Width;
+                        using (var g = Graphics.FromImage(target))
                         {
-                            var splash = new QRCodeSplashWindow();
-                            if (successSub)
-                            {
-                                splash.Closed += Splash_Closed0;
-                            }
-                            if (success)
-                            {
-                                splash.Closed += Splash_Closed;
-                            }
-                            if (!(successSub || success))
-                            {
-                                _urlToOpen = result.Text;
-                                splash.Closed += Splash_Closed2;
-                            }
+                            g.DrawImage(fullImage,
+                            new Rectangle(0, 0, target.Width, target.Height),
+                                    cropRect,
+                                    GraphicsUnit.Pixel);
+                        }
 
-                            double minX = int.MaxValue, minY = int.MaxValue, maxX = 0, maxY = 0;
-                            foreach (var point in result.ResultPoints)
+                        var result = QrCodeUtils.ScanBitmap(target);
+                        if (result != null)
+                        {
+                            var success = controller.AddServerBySsUrl(result.Text);
+                            var successSub = controller.AddSubscribeUrl(result.Text);
+                            _ = Application.Current.Dispatcher?.InvokeAsync(() =>
                             {
-                                minX = Math.Min(minX, point.X);
-                                minY = Math.Min(minY, point.Y);
-                                maxX = Math.Max(maxX, point.X);
-                                maxY = Math.Max(maxY, point.Y);
-                            }
+                                try
+                                {
+                                    var splash = new QRCodeSplashWindow();
+                                    if (successSub)
+                                    {
+                                        splash.Closed += Splash_Closed0;
+                                    }
+                                    if (success)
+                                    {
+                                        splash.Closed += Splash_Closed;
+                                    }
+                                    if (!(successSub || success))
+                                    {
+                                        _urlToOpen = result.Text;
+                                        splash.Closed += Splash_Closed2;
+                                    }
 
-                            minX /= imageScale;
-                            minY /= imageScale;
-                            maxX /= imageScale;
-                            maxY /= imageScale;
-                            // make it 20% larger
-                            var margin = (maxX - minX) * 0.20f;
-                            minX += -margin + marginLeft;
-                            maxX += margin + marginLeft;
-                            minY += -margin + marginTop;
-                            maxY += margin + marginTop;
-                            splash.Left = x;
-                            splash.Top = y;
-                            splash.TargetRect = new Rectangle((int)minX, (int)minY, (int)maxX - (int)minX,
-                                    (int)maxY - (int)minY);
-                            splash.Width = fullImage.Width;
-                            splash.Height = fullImage.Height;
-                            fullImage.Dispose();
-                            splash.Show();
-                        });
-                        return;
+                                    double minX = int.MaxValue, minY = int.MaxValue, maxX = 0, maxY = 0;
+                                    foreach (var point in result.ResultPoints)
+                                    {
+                                        minX = Math.Min(minX, point.X);
+                                        minY = Math.Min(minY, point.Y);
+                                        maxX = Math.Max(maxX, point.X);
+                                        maxY = Math.Max(maxY, point.Y);
+                                    }
+
+                                    minX /= imageScale;
+                                    minY /= imageScale;
+                                    maxX /= imageScale;
+                                    maxY /= imageScale;
+                                    // make it 20% larger
+                                    var margin = (maxX - minX) * 0.20f;
+                                    minX += -margin + marginLeft;
+                                    maxX += margin + marginLeft;
+                                    minY += -margin + marginTop;
+                                    maxY += margin + marginTop;
+                                    splash.Left = x;
+                                    splash.Top = y;
+                                    splash.TargetRect = new Rectangle((int)minX, (int)minY, (int)maxX - (int)minX,
+                                            (int)maxY - (int)minY);
+                                    splash.Width = fullImage.Width;
+                                    splash.Height = fullImage.Height;
+                                    fullImage.Dispose();
+                                    splash.Show();
+                                }
+                                catch (Exception e)
+                                {
+                                    Logging.LogUsefulException(e);
+                                }
+                            });
+                            return;
+                        }
                     }
-                }
 
-                MessageBox.Show(I18NUtil.GetAppStringValue(@"QrCodeNotFound"));
+                    MessageBox.Show(I18NUtil.GetAppStringValue(@"QrCodeNotFound"));
+                }
+                catch (Exception e)
+                {
+                    Logging.LogUsefulException(e);
+                }
             });
         }
 

@@ -44,8 +44,8 @@ namespace Shadowsocks
             SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
             app.Exit += App_Exit;
 
-            Global.LoadConfig();
-            var config = Global.GuiConfig; // snapshot for DI registration
+            var configPersistence = new ConfigPersistenceService();
+            var config = configPersistence.Load();
 
             I18NUtil.SetLanguage(config.LangName);
             ViewUtils.SetResource(app.Resources, @"../View/NotifyIconResources.xaml", 1);
@@ -54,11 +54,9 @@ namespace Shadowsocks
             // I18NUtil's MergedDictionaries[0]/[1] indexing stays valid.
             ThemeUtil.ApplyFluentTheme(app, ThemeUtil.Resolve(config.ThemeMode));
 
-            // Build the DI container, then resolve the core singletons from it instead of
-            // newing them up. Global still mirrors the instances for legacy code.
+            // Build the DI container, then resolve the core singletons from it.
             AppHost.Init(config);
             _controller = AppHost.Get<MainController>();
-            Global.Controller = _controller; // bridge for legacy consumers
 
             // Logging
             Logging.DefaultOut = Console.Out;
@@ -67,7 +65,6 @@ namespace Shadowsocks
             Utils.SetTls();
 
             _viewController = AppHost.Get<MenuViewController>();
-            Global.ViewController = _viewController; // bridge for legacy consumers
             SystemEvents.SessionEnding += _viewController.Quit_Click;
 
             _controller.Reload();
@@ -108,7 +105,6 @@ namespace Shadowsocks
             _viewController?.Quit_Click(default, default);
             _controller?.Stop();
             _controller = null;
-            Global.Controller = null;
         }
 
         private static void App_Exit(object sender, ExitEventArgs e)
@@ -127,7 +123,7 @@ namespace Shadowsocks
                     Logging.Info("os wake up");
                     if (_controller != null)
                     {
-                        Task.Run(() =>
+                        _ = Task.Run(() =>
                         {
                             Thread.Sleep(10 * 1000);
                             try
@@ -173,7 +169,7 @@ namespace Shadowsocks
         {
             try
             {
-                service.SendMessageToFirstInstanceAsync(command).GetAwaiter().GetResult();
+                _ = service.SendMessageToFirstInstanceAsync(command);
             }
             catch
             {
@@ -194,7 +190,7 @@ namespace Shadowsocks
                                 I18NUtil.GetAppStringValue(@"SuccessiveInstancesMessage2"),
                     I18NUtil.GetAppStringValue(@"SuccessiveInstancesCaption"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
-            Application.Current.Dispatcher?.InvokeAsync(() =>
+            _ = Application.Current.Dispatcher?.InvokeAsync(() =>
             {
                 _viewController.ImportAddress(string.Join(Environment.NewLine, args));
             });

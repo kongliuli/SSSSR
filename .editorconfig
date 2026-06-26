@@ -25,6 +25,9 @@ indent_size = 2
 # 缩进和间距
 indent_style = space
 
+# VSTHRD110: Observe the awaitable result of this async method call
+dotnet_diagnostic.VSTHRD110.severity = warning
+
 #### .NET 编码约定 ####
 
 # 组织 Using

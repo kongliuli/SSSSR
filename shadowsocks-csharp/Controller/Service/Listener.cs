@@ -32,8 +32,10 @@ namespace Shadowsocks.Controller.Service
         private string _authUser;
         private Socket _socket;
         private Socket _socketV6;
+        private Socket _udpSocket;
         private bool _stop;
         private readonly List<IService> _services;
+        public Socket UdpSocket => _udpSocket;
 
         public Listener(List<IService> services)
         {
@@ -61,7 +63,6 @@ namespace Shadowsocks.Controller.Service
 
             try
             {
-                //TODO:UDP socket
                 // Create a TCP/IP socket.
                 _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -98,6 +99,22 @@ namespace Shadowsocks.Controller.Service
                 Console.WriteLine($@"ShadowsocksR started on port {localPort}");
                 _socket.BeginAccept(AcceptCallback, _socket);
                 _socketV6?.BeginAccept(AcceptCallback, _socketV6);
+
+                // UDP listener
+                try
+                {
+                    var udpPort = _config.UdpPort != 0 ? _config.UdpPort : localPort;
+                    _udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                    _udpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    var udpEndPoint = new IPEndPoint(_shareOverLan ? IPAddress.Any : IPAddress.Loopback, udpPort);
+                    _udpSocket.Bind(udpEndPoint);
+                    Console.WriteLine($@"UDP listener started on port {udpPort}");
+                }
+                catch
+                {
+                    _udpSocket?.Close();
+                    _udpSocket = null;
+                }
             }
             catch (SocketException e)
             {
@@ -111,6 +128,11 @@ namespace Shadowsocks.Controller.Service
                 {
                     _socketV6.Close();
                     _socketV6 = null;
+                }
+                if (_udpSocket != null)
+                {
+                    _udpSocket.Close();
+                    _udpSocket = null;
                 }
                 throw;
             }
@@ -129,6 +151,11 @@ namespace Shadowsocks.Controller.Service
             {
                 _socketV6.Close();
                 _socketV6 = null;
+            }
+            if (_udpSocket != null)
+            {
+                _udpSocket.Close();
+                _udpSocket = null;
             }
 
             _services.ForEach(s => s.Stop());

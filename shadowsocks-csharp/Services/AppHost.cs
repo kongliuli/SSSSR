@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Shadowsocks.Controller;
+using Shadowsocks.Controller.HttpRequest;
+using Shadowsocks.Enums;
+using Shadowsocks.Controller.Service;
 using Shadowsocks.Model;
 using System;
 
@@ -45,6 +48,17 @@ namespace Shadowsocks.Services
             // resolves the same MainController instance for both.
             services.AddSingleton<MainController>();
             services.AddSingleton<MenuViewController>();
+
+            // IPRangeSet singleton — ProxyRuleMode is captured from config at registration.
+            services.AddSingleton(sp => new IPRangeSet(config.ProxyRuleMode));
+
+            // HttpRequest singletons — these are used by controllers/view-models for
+            // update/subscribe operations. They are stateless once configured.
+            services.AddSingleton<UpdateNode>();
+            services.AddSingleton<UpdateSubscribeManager>();
+
+            // Config persistence — replaces Global.Load*/SaveConfig static methods.
+            services.AddSingleton<IConfigPersistenceService, ConfigPersistenceService>();
 
             // Single-window Fluent shell and its navigation pages. Pages are transient: the
             // NavigationView resolves a fresh instance from the container on each navigation.

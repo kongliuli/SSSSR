@@ -53,7 +53,7 @@ namespace Shadowsocks.Controller.Service
             {
                 return false;
             }
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 var unused = new ProxyAuthHandler(_config, _transfer, _ipRange, firstPacket, length, socket);
             });

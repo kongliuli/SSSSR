@@ -1,3 +1,4 @@
+using Shadowsocks.Obfs;
 using System;
 
 namespace Shadowsocks.Controller.Service
@@ -40,7 +41,7 @@ namespace Shadowsocks.Controller.Service
                 return;
             }
 
-            var head_size = Obfs.ObfsBase.GetHeadSize(_sendBuffer, _sendBuffer.Length);
+            var head_size = ObfsBase.GetHeadSize(_sendBuffer, _sendBuffer.Length);
             if (_sendBuffer.Length - head_size < 0)
             {
                 return;

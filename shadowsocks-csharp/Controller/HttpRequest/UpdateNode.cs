@@ -2,6 +2,7 @@ using Shadowsocks.Enums;
 using Shadowsocks.Model;
 using System;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace Shadowsocks.Controller.HttpRequest
 {
@@ -23,7 +24,7 @@ namespace Shadowsocks.Controller.HttpRequest
                 var proxy = CreateProxy(config);
                 SubscribeTask = subscribeTask;
                 var url = subscribeTask.Url ?? DefaultUpdateUrl;
-                Update(subscribeTask.ProxyType, proxy, config.ConnectTimeout * 1000, url, config.ProxyUserAgent);
+                _ = Update(subscribeTask.ProxyType, proxy, config.ConnectTimeout * 1000, url, config.ProxyUserAgent);
             }
             catch (Exception e)
             {
@@ -31,7 +32,7 @@ namespace Shadowsocks.Controller.HttpRequest
             }
         }
 
-        private async void Update(HttpRequestProxyType proxyType, IWebProxy proxy, int timeout, string url, string userAgent)
+        private async Task Update(HttpRequestProxyType proxyType, IWebProxy proxy, int timeout, string url, string userAgent)
         {
             try
             {

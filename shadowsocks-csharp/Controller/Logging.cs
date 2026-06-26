@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Shadowsocks.Controller
 {
@@ -112,13 +113,13 @@ namespace Shadowsocks.Controller
             {
                 if (file != LogFile)
                 {
-                    FileManager.ZipCompressToFile(file).ContinueWith(task =>
+                    _ = FileManager.ZipCompressToFileAsync(file).ContinueWith(task =>
                     {
                         if (task.Result)
                         {
                             File.Delete(file);
                         }
-                    });
+                    }, TaskScheduler.Default);
                 }
             }
         }

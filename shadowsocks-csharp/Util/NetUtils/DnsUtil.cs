@@ -16,9 +16,14 @@ namespace Shadowsocks.Util.NetUtils
 
         public static IPAddress? QueryDns(string host)
         {
-            var res = host.Contains('.') && Global.GuiConfig.DnsClients.Any(s => s.Enable)
-                    ? QueryAsync(host, Global.GuiConfig.DnsClients).Result
-                    : QueryDefaultAsync(host).Result;
+            return QueryDefaultAsync(host).GetAwaiter().GetResult();
+        }
+
+        public static async Task<IPAddress?> QueryDnsAsync(string host, IReadOnlyList<DnsClient> dnsClients)
+        {
+            var res = host.Contains('.') && dnsClients?.Any(s => s.Enable) == true
+                    ? await QueryAsync(host, dnsClients)
+                    : await QueryDefaultAsync(host);
             Logging.Info(res is null
                     ? $@"DNS query {host} failed."
                     : $@"DNS query {host} answer {res}");

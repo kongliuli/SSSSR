@@ -1,6 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Shadowsocks.Controller.HttpRequest;
+using Shadowsocks.Controller.Service;
 using Shadowsocks.Model;
+using Shadowsocks.Services;
 using Shadowsocks.Util;
 using System;
 using System.Collections.Generic;
@@ -20,15 +23,21 @@ namespace Shadowsocks.ViewModel
     public partial class SubscriptionsViewModel : ObservableObject
     {
         private readonly Configuration _config;
+        private readonly UpdateNode _updateNodeChecker;
+        private readonly UpdateSubscribeManager _updateSubscribeManager;
+        private readonly IConfigPersistenceService _configPersistence;
 
         /// <summary>Cards currently rendered, one per <see cref="ServerSubscribe"/>.</summary>
         public ObservableCollection<SubscriptionItemViewModel> Subscriptions { get; } = new();
 
         [ObservableProperty] private bool _isEmpty;
 
-        public SubscriptionsViewModel(Configuration config)
+        public SubscriptionsViewModel(Configuration config, UpdateNode updateNodeChecker, UpdateSubscribeManager updateSubscribeManager, IConfigPersistenceService configPersistence)
         {
             _config = config;
+            _updateNodeChecker = updateNodeChecker;
+            _updateSubscribeManager = updateSubscribeManager;
+            _configPersistence = configPersistence;
             Reload();
         }
 
@@ -63,7 +72,7 @@ namespace Shadowsocks.ViewModel
             Subscriptions.Add(new SubscriptionItemViewModel(sub, _config));
             IsEmpty = false;
 
-            Global.SaveConfig();
+            _configPersistence.Save(_config);
         }
 
         [RelayCommand]
@@ -88,7 +97,7 @@ namespace Shadowsocks.ViewModel
             Subscriptions.Remove(item);
             IsEmpty = Subscriptions.Count == 0;
 
-            Global.SaveConfig();
+            _configPersistence.Save(_config);
         }
 
         /// <summary>
@@ -114,7 +123,7 @@ namespace Shadowsocks.ViewModel
                 server.Enable = enabled;
             }
 
-            Global.SaveConfig();
+            _configPersistence.Save(_config);
         }
 
         [RelayCommand]
@@ -130,9 +139,9 @@ namespace Shadowsocks.ViewModel
             {
                 try
                 {
-                    Global.UpdateSubscribeManager?.CreateTask(
+                    _updateSubscribeManager.CreateTask(
                         _config,
-                        Global.UpdateNodeChecker,
+                        _updateNodeChecker,
                         true,
                         new List<ServerSubscribe> { item.Model });
                 }
@@ -151,9 +160,9 @@ namespace Shadowsocks.ViewModel
             {
                 try
                 {
-                    Global.UpdateSubscribeManager?.CreateTask(
+                    _updateSubscribeManager.CreateTask(
                         _config,
-                        Global.UpdateNodeChecker,
+                        _updateNodeChecker,
                         true);
                 }
                 catch (Exception e)

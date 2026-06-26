@@ -70,7 +70,7 @@ namespace Shadowsocks.Model.Transfer
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
                 }
                 var jsonString = JsonUtils.Serialize(config.Servers, true);
-                File.WriteAllTextAsync(LogFile, jsonString);
+                _ = File.WriteAllTextAsync(LogFile, jsonString);
             }
             catch (IOException e)
             {

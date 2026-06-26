@@ -19,6 +19,7 @@ namespace Shadowsocks.Model
         private AppThemeMode _themeMode;
         private bool _shareOverLan;
         private int _localPort;
+        private int _udpPort;
         private int _reconnectTimes;
         private BalanceType _balanceType;
         private bool _randomInGroup;
@@ -84,6 +85,11 @@ namespace Shadowsocks.Model
         /// 监听端口
         /// </summary>
         public int LocalPort { get => _localPort; set => SetField(ref _localPort, value); }
+
+        /// <summary>
+        /// UDP 端口（0 = 与TCP端口相同）
+        /// </summary>
+        public int UdpPort { get => _udpPort; set => SetField(ref _udpPort, value); }
 
         /// <summary>
         /// 重连次数
@@ -457,6 +463,7 @@ namespace Shadowsocks.Model
             SysProxyMode = ProxyMode.NoModify;
             ShareOverLan = false;
             LocalPort = 1080;
+            UdpPort = 0;
             ReconnectTimes = 2;
             BalanceType = BalanceType.LowException;
             RandomInGroup = true;
@@ -501,6 +508,7 @@ namespace Shadowsocks.Model
             ThemeMode = config.ThemeMode;
             ShareOverLan = config.ShareOverLan;
             LocalPort = config.LocalPort;
+            UdpPort = config.UdpPort;
             ReconnectTimes = config.ReconnectTimes;
             BalanceType = config.BalanceType;
             RandomInGroup = config.RandomInGroup;
@@ -534,6 +542,10 @@ namespace Shadowsocks.Model
             if (!IsPort(LocalPort))
             {
                 LocalPort = 1080;
+            }
+            if (UdpPort != 0 && !IsPort(UdpPort))
+            {
+                UdpPort = 0;
             }
             if (PortMap == null)
             {

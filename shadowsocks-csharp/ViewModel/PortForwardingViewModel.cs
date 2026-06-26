@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Shadowsocks.Controller;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
+using Shadowsocks.Services;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace Shadowsocks.ViewModel
     public partial class PortForwardingViewModel : ObservableObject
     {
         private readonly MainController _controller;
+        private readonly IConfigPersistenceService _configPersistence;
 
         /// <summary>Editable rules shown in the grid.</summary>
         public ObservableCollection<PortMapRow> Rules { get; } = new();
@@ -36,16 +38,17 @@ namespace Shadowsocks.ViewModel
         [ObservableProperty] private PortMapRow _selectedRule;
         [ObservableProperty] private string _statusText = string.Empty;
 
-        public PortForwardingViewModel(MainController controller)
+        public PortForwardingViewModel(MainController controller, IConfigPersistenceService configPersistence)
         {
             _controller = controller;
+            _configPersistence = configPersistence;
             Load();
         }
 
         /// <summary>(Re)load rules and the server pick list from the on-disk configuration.</summary>
         public void Load()
         {
-            var config = Global.Load();
+            var config = _configPersistence.Load();
 
             ServerOptions.Clear();
             ServerOptions.Add(new ServerOption(string.Empty, @"（任意 / 分组）"));
@@ -127,7 +130,7 @@ namespace Shadowsocks.ViewModel
 
             // Clone the persisted configuration (like the legacy window) and swap in the new
             // port map, then hand it to the controller which restarts the port-map listeners.
-            var config = Global.Load();
+            var config = _configPersistence.Load();
             config.PortMap = portMap;
 
             _controller.SaveServersPortMap(config);

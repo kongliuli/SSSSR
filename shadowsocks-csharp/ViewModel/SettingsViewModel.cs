@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Shadowsocks.Controller;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
+using Shadowsocks.Services;
 using Shadowsocks.Util;
 using System;
 using System.Collections.Generic;
@@ -20,14 +21,15 @@ namespace Shadowsocks.ViewModel
     /// scrolling page: General, Proxy &amp; PAC, DNS and Update.
     /// <para>
     /// Edits are made against an in-memory copy (<see cref="Config"/>) loaded from
-    /// <see cref="Global.Load"/>; <see cref="SaveCommand"/> writes the copy back through
-    /// <see cref="MainController.SaveServersConfig"/> (or <see cref="Global.SaveConfig"/> as a
+    /// <see cref="IConfigPersistenceService.Load"/>; <see cref="SaveCommand"/> writes the copy back through
+    /// <see cref="MainController.SaveServersConfig"/> (or <see cref="IConfigPersistenceService.Save"/> as a
     /// fallback) exactly like the old windows did.
     /// </para>
     /// </summary>
     public partial class SettingsViewModel : ObservableObject
     {
         private readonly MainController _controller;
+        private readonly IConfigPersistenceService _configPersistence;
 
         /// <summary>The working configuration copy bound by the page. Replaced on each <see cref="Reload"/>.</summary>
         [ObservableProperty] private Configuration _config = new();
@@ -99,9 +101,10 @@ namespace Shadowsocks.ViewModel
 
         #endregion
 
-        public SettingsViewModel(MainController controller)
+        public SettingsViewModel(MainController controller, IConfigPersistenceService configPersistence)
         {
             _controller = controller;
+            _configPersistence = configPersistence;
             _selectedTheme = Themes[0];
             Reload();
         }
@@ -109,7 +112,7 @@ namespace Shadowsocks.ViewModel
         /// <summary>Reload the working copy from the on-disk configuration.</summary>
         public void Reload()
         {
-            Config = Global.Load();
+            Config = _configPersistence.Load();
             AutoStartup = Shadowsocks.Controller.AutoStartup.Check();
 
             DnsClients.Clear();
@@ -145,7 +148,7 @@ namespace Shadowsocks.ViewModel
             if (Config != null && Config.ThemeMode != value.Mode)
             {
                 Config.ThemeMode = value.Mode;
-                Global.SaveConfig();
+                _configPersistence.Save(Config);
             }
         }
 

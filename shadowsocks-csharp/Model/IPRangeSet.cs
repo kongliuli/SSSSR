@@ -17,12 +17,13 @@ namespace Shadowsocks.Model
     public class IPRangeSet
     {
         public const string ChnFilename = @"chn_ip.txt";
-        private static bool IsReverse => Global.GuiConfig.ProxyRuleMode == ProxyRuleMode.BypassLanAndNotChina;
 
+        private readonly bool _isReverse;
         private IIPAddressMatcher<Rule> _ipMatcher;
 
-        public IPRangeSet()
+        public IPRangeSet(ProxyRuleMode proxyRuleMode)
         {
+            _isReverse = proxyRuleMode == ProxyRuleMode.BypassLanAndNotChina;
             Reset();
         }
 
@@ -34,7 +35,7 @@ namespace Shadowsocks.Model
 
         public bool IsInIPRange(IPAddress ip)
         {
-            if (!IsReverse)
+            if (!_isReverse)
             {
                 return _ipMatcher.Match(ip) == Rule.Direct;
             }

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows;
+using Shadowsocks.Controller;
 
 namespace Shadowsocks.View
 {
@@ -33,62 +34,69 @@ namespace Shadowsocks.View
             _y = Top;
             _w = Width;
             _h = Height;
-            Splash();
+            _ = Splash();
         }
 
-        private async void Splash()
+        private async Task Splash()
         {
-            var sw = Stopwatch.StartNew();
-            var interval = (int)(AnimationTime * 1000 / AnimationSteps);
-            while (true)
+            try
             {
-                var percent = sw.ElapsedMilliseconds / 1000.0 / AnimationTime;
-                if (percent < 1)
+                var sw = Stopwatch.StartNew();
+                var interval = (int)(AnimationTime * 1000 / AnimationSteps);
+                while (true)
                 {
-                    percent = 1 - Math.Pow(1 - percent, 4);
-                    Left = _x + TargetRect.X * percent;
-                    Top = _y + TargetRect.Y * percent;
-                    Width = TargetRect.Width * percent + _w * (1 - percent);
-                    Height = TargetRect.Height * percent + _h * (1 - percent);
-                    Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    if (_flashStep == 0)
+                    var percent = sw.ElapsedMilliseconds / 1000.0 / AnimationTime;
+                    if (percent < 1)
                     {
-                        interval = 100;
-                        Visibility = Visibility.Hidden;
-                    }
-                    else if (_flashStep == 1)
-                    {
-                        interval = 50;
-                        Visibility = Visibility.Visible;
-                    }
-                    else if (_flashStep == 2)
-                    {
-                        Visibility = Visibility.Hidden;
-                    }
-                    else if (_flashStep == 3)
-                    {
-                        Visibility = Visibility.Visible;
-                    }
-                    else if (_flashStep == 4)
-                    {
-                        Visibility = Visibility.Hidden;
-                    }
-                    else if (_flashStep == 5)
-                    {
+                        percent = 1 - Math.Pow(1 - percent, 4);
+                        Left = _x + TargetRect.X * percent;
+                        Top = _y + TargetRect.Y * percent;
+                        Width = TargetRect.Width * percent + _w * (1 - percent);
+                        Height = TargetRect.Height * percent + _h * (1 - percent);
                         Visibility = Visibility.Visible;
                     }
                     else
                     {
-                        sw.Stop();
-                        Close();
-                        return;
+                        if (_flashStep == 0)
+                        {
+                            interval = 100;
+                            Visibility = Visibility.Hidden;
+                        }
+                        else if (_flashStep == 1)
+                        {
+                            interval = 50;
+                            Visibility = Visibility.Visible;
+                        }
+                        else if (_flashStep == 2)
+                        {
+                            Visibility = Visibility.Hidden;
+                        }
+                        else if (_flashStep == 3)
+                        {
+                            Visibility = Visibility.Visible;
+                        }
+                        else if (_flashStep == 4)
+                        {
+                            Visibility = Visibility.Hidden;
+                        }
+                        else if (_flashStep == 5)
+                        {
+                            Visibility = Visibility.Visible;
+                        }
+                        else
+                        {
+                            sw.Stop();
+                            Close();
+                            return;
+                        }
+                        ++_flashStep;
                     }
-                    ++_flashStep;
+                    await Task.Delay(interval);
                 }
-                await Task.Delay(interval);
+            }
+            catch (Exception e)
+            {
+                Logging.LogUsefulException(e);
             }
         }
     }

@@ -5,6 +5,7 @@ using Shadowsocks.Controller;
 using Shadowsocks.Encryption;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
+using Shadowsocks.Services;
 using Shadowsocks.Util;
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,7 @@ namespace Shadowsocks.ViewModel
     {
         private readonly Configuration _config;
         private readonly MainController _controller;
+        private readonly IConfigPersistenceService _configPersistence;
         private readonly ServerConfigViewModel _tree = new();
 
         /// <summary>Candidate encryption methods for the editor combo box.</summary>
@@ -87,10 +89,11 @@ namespace Shadowsocks.ViewModel
         public Server SelectedServer =>
             SelectedNode is { Type: ServerTreeViewType.Server } ? SelectedNode.Server : null;
 
-        public ServersViewModel(Configuration config, MainController controller)
+        public ServersViewModel(Configuration config, MainController controller, IConfigPersistenceService configPersistence)
         {
             _config = config;
             _controller = controller;
+            _configPersistence = configPersistence;
 
             foreach (var name in EncryptorFactory.RegisteredEncryptors.Keys
                          .Where(name => EncryptorFactory.GetEncryptorInfo(name).Display))
@@ -243,14 +246,14 @@ namespace Shadowsocks.ViewModel
             }
 
             // Persist + notify so the running controller picks up the changes.
-            // SaveAndNotifyChanged() calls Global.SaveConfig() internally and raises ConfigChanged.
+            // SaveAndNotifyChanged() calls Save internally and raises ConfigChanged.
             if (_controller is not null)
             {
                 _controller.SaveAndNotifyChanged();
             }
             else
             {
-                Global.SaveConfig();
+                _configPersistence.Save(_config);
             }
 
             StatusText = $@"已保存 {servers.Count} 个服务器";
@@ -319,7 +322,7 @@ namespace Shadowsocks.ViewModel
             }
             else
             {
-                Global.SaveConfig();
+                _configPersistence.Save(_config);
             }
 
             Reload();
@@ -380,27 +383,59 @@ namespace Shadowsocks.ViewModel
                 return;
             }
 
-            // Servers may be reordered anywhere or moved into groups/subtags or beside other servers.
-            // Groups/subtags may only be reordered among siblings (kept simple here).
-            // TODO: replicate the full source/target type validation matrix from
-            // ServerConfigWindow.ServersTreeView_OnItemDropping for stricter rules.
+            // Source/target type validation matrix replicated from
+            // ServerConfigWindow.ServersTreeView_OnItemDropping.
+            //
+            // Rule 1: Can't drop wrong type combos (Subtag→Group, Group→Server, etc.)
+            // Rule 2: Can't drop server onto itself (handled above).
+            // Rule 3: Can't nest beyond depth 2 (Subtag must be at root; Group→Group only same-parent siblings).
+            // Rule 4: Can't drag across subscription boundaries (Group→Group requires same parent).
             switch (source.Type)
             {
-                case ServerTreeViewType.Server:
-                    dropInfo.Effects = System.Windows.DragDropEffects.Move;
-                    dropInfo.DropTargetAdorner = target.Type == ServerTreeViewType.Server
-                        ? DropTargetAdorners.Insert
-                        : DropTargetAdorners.Highlight;
-                    break;
-
-                case ServerTreeViewType.Group:
                 case ServerTreeViewType.Subtag:
-                    // Only allow reordering next to a sibling of the same type.
-                    if (target.Type == source.Type)
+                    // Subtags may only be reordered among root-level siblings.
+                    if (ServerTreeViewModel.FindParentNode(Nodes, target) != null)
+                    {
+                        return; // Rule 1 + 3: target is nested, subtag can't go there.
+                    }
+                    if (target.Type == ServerTreeViewType.Subtag)
                     {
                         dropInfo.Effects = System.Windows.DragDropEffects.Move;
                         dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
                     }
+                    break;
+
+                case ServerTreeViewType.Group:
+                    if (target.Type == ServerTreeViewType.Subtag)
+                    {
+                        return; // Rule 1: can't drop a group onto a subtag.
+                    }
+                    if (target.Type == ServerTreeViewType.Group)
+                    {
+                        var targetParent = ServerTreeViewModel.FindParentNode(Nodes, target);
+                        if (targetParent == null)
+                        {
+                            return; // Rule 3: target group at root has no parent for sibling reorder.
+                        }
+                        var sourceParent = ServerTreeViewModel.FindParentNode(Nodes, source);
+                        if (!ReferenceEquals(sourceParent, targetParent))
+                        {
+                            return; // Rule 4: can't drag groups across subscription boundaries.
+                        }
+                        dropInfo.Effects = System.Windows.DragDropEffects.Move;
+                        dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
+                    }
+                    break;
+
+                case ServerTreeViewType.Server:
+                    if (target.Type == ServerTreeViewType.Subtag)
+                    {
+                        return; // Rule 1: can't drop a server onto a subtag.
+                    }
+                    dropInfo.Effects = System.Windows.DragDropEffects.Move;
+                    dropInfo.DropTargetAdorner = target.Type == ServerTreeViewType.Server
+                        ? DropTargetAdorners.Insert
+                        : DropTargetAdorners.Highlight;
                     break;
             }
         }
@@ -425,13 +460,22 @@ namespace Shadowsocks.ViewModel
             {
                 case ServerTreeViewType.Group:
                 {
-                    // Drop a server into a group -> reparent it and update Group/SubTag.
                     if (source.Type == ServerTreeViewType.Server)
                     {
+                        // Drop a server into a group -> reparent it and update Group/SubTag.
                         sourceCollection.Remove(source);
                         ApplyGroup(source, target);
                         target.Nodes.Add(source);
                         SelectedNode = source;
+                    }
+                    else if (source.Type == ServerTreeViewType.Group)
+                    {
+                        // Reorder a group beside another group within the same subtag parent.
+                        var parent = ServerTreeViewModel.FindParentNode(Nodes, target);
+                        if (parent != null)
+                        {
+                            MoveBeside(parent.Nodes, source, target, dropInfo);
+                        }
                     }
                     break;
                 }

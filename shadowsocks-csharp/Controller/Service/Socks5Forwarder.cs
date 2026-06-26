@@ -33,23 +33,23 @@ namespace Shadowsocks.Controller.Service
 
         public bool Handle(byte[] firstPacket, int length, Socket socket, string local_sendback_protocol)
         {
-            var handle = IsHandle(firstPacket, length);
+            var handle = IsHandleAsync(firstPacket, length).GetAwaiter().GetResult();
             if (handle > 0)
             {
                 if (_config.ProxyEnable)
                 {
-                    new Handler().Start(_config, firstPacket, socket, local_sendback_protocol, handle == 2);
+                    _ = new Handler().StartAsync(_config, firstPacket, socket, local_sendback_protocol, handle == 2);
                 }
                 else
                 {
-                    new Handler().Start(_config, firstPacket, socket, local_sendback_protocol, false);
+                    _ = new Handler().StartAsync(_config, firstPacket, socket, local_sendback_protocol, false);
                 }
                 return true;
             }
             return false;
         }
 
-        private int IsHandle(byte[] firstPacket, int length)
+        private async Task<int> IsHandleAsync(byte[] firstPacket, int length)
         {
             if (length >= 7 && _config.ProxyRuleMode != ProxyRuleMode.Disable)
             {
@@ -119,7 +119,7 @@ namespace Shadowsocks.Controller.Service
                                 }
                                 if (ipAddress == null)
                                 {
-                                    ipAddress = DnsUtil.QueryDns(host);
+                                    ipAddress = await DnsUtil.QueryDnsAsync(host, _config.DnsClients);
                                     if (ipAddress != null)
                                     {
                                         DnsUtil.DnsBuffer.Set(host, new IPAddress(ipAddress.GetAddressBytes()));
@@ -215,7 +215,7 @@ namespace Shadowsocks.Controller.Service
             protected object timerLock = new();
             protected DateTime lastTimerSetTime;
 
-            public void Start(Configuration config, byte[] firstPacket, Socket socket, string local_sendback_protocol, bool proxy)
+            public async Task StartAsync(Configuration config, byte[] firstPacket, Socket socket, string local_sendback_protocol, bool proxy)
             {
                 _firstPacket = firstPacket;
                 _local = new ProxySocketTunLocal(socket)
@@ -224,10 +224,10 @@ namespace Shadowsocks.Controller.Service
                 };
                 _config = config;
                 _local_proxy = proxy;
-                Connect();
+                await ConnectAsync();
             }
 
-            private void Connect()
+            private async Task ConnectAsync()
             {
                 try
                 {
@@ -295,7 +295,7 @@ namespace Shadowsocks.Controller.Service
                                 }
                                 if (ipAddress == null)
                                 {
-                                    ipAddress = DnsUtil.QueryDns(_remote_host);
+                                    ipAddress = await DnsUtil.QueryDnsAsync(_remote_host, _config.DnsClients);
                                 }
                                 if (ipAddress != null)
                                 {
@@ -631,7 +631,7 @@ namespace Shadowsocks.Controller.Service
 
             public override void Shutdown()
             {
-                Task.Run(Close);
+                _ = Task.Run(Close);
             }
         }
     }

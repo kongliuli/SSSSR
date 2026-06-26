@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
+
 using System.Reflection;
 using System.Text;
 
@@ -187,15 +187,11 @@ namespace Shadowsocks.Util
 
         public static void SetTls()
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                return;
-            }
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 20170))
-            {
-                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls13;
-            }
+            // In .NET 10, SocketsHttpHandler (the default) negotiates TLS automatically
+            // with the OS. On Windows 10+, TLS 1.2 is the minimum by default, and TLS 1.3
+            // is available on build 20170+. ServicePointManager.SecurityProtocol is obsolete
+            // and has been a no-op for HttpClient-based requests since .NET Core 2.1.
+            // The OS-level TLS enforcement is sufficient; no explicit code configuration needed.
         }
     }
 }

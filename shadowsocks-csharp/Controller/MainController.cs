@@ -3,6 +3,7 @@ using Shadowsocks.Controller.Service;
 using Shadowsocks.Enums;
 using Shadowsocks.Model;
 using Shadowsocks.Model.Transfer;
+using Shadowsocks.Services;
 using Shadowsocks.Util;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,9 @@ namespace Shadowsocks.Controller
         // interacts with low level logic
 
         private readonly Configuration _config;
+        private readonly UpdateNode _updateNodeChecker;
+        private readonly UpdateSubscribeManager _updateSubscribeManager;
+        private readonly IConfigPersistenceService _configPersistence;
         private Listener _listener;
         private List<Listener> _portMapListener;
         private PACDaemon _pacDaemon;
@@ -61,9 +65,12 @@ namespace Shadowsocks.Controller
         /// read-only access (e.g. to compare a working copy against the live state).</summary>
         public Configuration LiveConfig => _config;
 
-        public MainController(Configuration config)
+        public MainController(Configuration config, UpdateNode updateNodeChecker, UpdateSubscribeManager updateSubscribeManager, IConfigPersistenceService configPersistence)
         {
             _config = config;
+            _updateNodeChecker = updateNodeChecker;
+            _updateSubscribeManager = updateSubscribeManager;
+            _configPersistence = configPersistence;
             _transfer = ServerTransferTotal.Load();
 
             foreach (var server in _config.Configs)
@@ -97,7 +104,7 @@ namespace Shadowsocks.Controller
         {
             if (servers != null)
             {
-                Application.Current.Dispatcher?.InvokeAsync(() =>
+                _ = Application.Current.Dispatcher?.InvokeAsync(() =>
                 {
                     foreach (var server in servers)
                     {
@@ -129,9 +136,9 @@ namespace Shadowsocks.Controller
             return from t in mergeConfig.Configs let j = FindFirstMatchServer(t, servers) where j == -1 select t;
         }
 
-        private static Configuration MergeGetConfiguration(Configuration mergeConfig)
+        private Configuration MergeGetConfiguration(Configuration mergeConfig)
         {
-            var ret = Global.Load();
+            var ret = _configPersistence.Load();
             if (mergeConfig != null)
             {
                 MergeConfiguration(mergeConfig, ret.Configs);
@@ -259,12 +266,12 @@ namespace Shadowsocks.Controller
                 if (newSubscribes.Count > 0)
                 {
                     SaveAndNotifyChanged();
-                    Global.UpdateSubscribeManager.CreateTask(_config, Global.UpdateNodeChecker, true, newSubscribes);
+                    _updateSubscribeManager.CreateTask(_config, _updateNodeChecker, true, newSubscribes);
                     return true;
                 }
                 if (existSubscribes.Count > 0)
                 {
-                    Global.UpdateSubscribeManager.CreateTask(_config, Global.UpdateNodeChecker, true, existSubscribes);
+                    _updateSubscribeManager.CreateTask(_config, _updateNodeChecker, true, existSubscribes);
                     return false;
                 }
             }
@@ -324,13 +331,13 @@ namespace Shadowsocks.Controller
         public void ToggleSelectAutoCheckUpdate(bool enabled)
         {
             _config.AutoCheckUpdate = enabled;
-            Global.SaveConfig();
+            _configPersistence.Save(_config);
         }
 
         public void ToggleSelectAllowPreRelease(bool enabled)
         {
             _config.IsPreRelease = enabled;
-            Global.SaveConfig();
+            _configPersistence.Save(_config);
         }
 
         /// <summary>
@@ -338,8 +345,8 @@ namespace Shadowsocks.Controller
         /// </summary>
         public void SaveAndNotifyChanged()
         {
-            Global.SaveConfig();
-            Application.Current.Dispatcher?.InvokeAsync(() => { ConfigChanged?.Invoke(this, EventArgs.Empty); });
+            _configPersistence.Save(_config);
+            _ = Application.Current.Dispatcher?.InvokeAsync(() => { ConfigChanged?.Invoke(this, EventArgs.Empty); });
         }
 
         /// <summary>
@@ -347,7 +354,7 @@ namespace Shadowsocks.Controller
         /// </summary>
         private void SaveAndReload()
         {
-            Global.SaveConfig();
+            _configPersistence.Save(_config);
             Reload();
         }
 
@@ -424,12 +431,12 @@ namespace Shadowsocks.Controller
 
         public void UpdatePACFromGFWList()
         {
-            _gfwListUpdater?.UpdatePacFromGfwList(_config);
+            _ = _gfwListUpdater?.UpdatePacFromGfwList(_config);
         }
 
         public void UpdatePACFromOnlinePac(string url)
         {
-            _gfwListUpdater?.UpdateOnlinePac(_config, url);
+            _ = _gfwListUpdater?.UpdateOnlinePac(_config, url);
         }
 
         private void ReloadPacServer()
@@ -455,7 +462,7 @@ namespace Shadowsocks.Controller
 
         private void ReloadIPRange()
         {
-            _chnRangeSet = new IPRangeSet();
+            _chnRangeSet = new IPRangeSet(_config.ProxyRuleMode);
             _chnRangeSet.LoadChn();
         }
 
@@ -523,33 +530,34 @@ namespace Shadowsocks.Controller
 
             LoadPortMap();
 
-            Application.Current.Dispatcher?.InvokeAsync(() => { ConfigChanged?.Invoke(this, EventArgs.Empty); });
+            _ = Application.Current.Dispatcher?.InvokeAsync(() => { ConfigChanged?.Invoke(this, EventArgs.Empty); });
 
             UpdateSystemProxy();
         }
 
+        private static readonly Dictionary<SocketError, string> ErrorMessages = new()
+        {
+            [SocketError.AddressAlreadyInUse] = "端口已被占用",
+            [SocketError.ConnectionRefused] = "连接被拒绝",
+            [SocketError.NetworkUnreachable] = "网络不可达",
+            [SocketError.HostUnreachable] = "主机不可达",
+            [SocketError.ConnectionReset] = "连接被重置",
+            [SocketError.TimedOut] = "连接超时",
+            [SocketError.AccessDenied] = "权限不足，请以管理员身份运行",
+            [SocketError.NotConnected] = "未连接到服务器",
+            [SocketError.Shutdown] = "连接已关闭",
+        };
+
         private void ThrowSocketException(ref Exception e)
         {
-            // TODO:translate Microsoft language into human language
-            // i.e. An attempt was made to access a socket in a way forbidden by its access permissions => Port already in use
-            // https://docs.microsoft.com/zh-cn/dotnet/api/system.net.sockets.socketerror
             if (e is not SocketException se)
             {
                 return;
             }
 
-            switch (se.SocketErrorCode)
+            if (ErrorMessages.TryGetValue(se.SocketErrorCode, out var translation))
             {
-                case SocketError.AddressAlreadyInUse:
-                {
-                    e = new Exception(string.Format(I18NUtil.GetAppStringValue(@"PortInUse"), _config.LocalPort), se);
-                    break;
-                }
-                case SocketError.AccessDenied:
-                {
-                    e = new Exception(string.Format(I18NUtil.GetAppStringValue(@"PortReserved"), _config.LocalPort), se);
-                    break;
-                }
+                e = new Exception($"{se.Message} ({translation})", se);
             }
         }
 
